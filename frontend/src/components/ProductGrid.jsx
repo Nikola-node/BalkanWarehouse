@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
+import { t } from '../i18n'
 
 const PAGE_SIZE = 24
 
@@ -21,33 +23,37 @@ function ProductGrid() {
   }, [page])
 
   if (loading) {
-    return <p>Loading products...</p>
+    return <p>{t('loading')}</p>
   }
 
   return (
     <div>
       <div className="product-grid">
         {items.map((product) => (
-          <div className="product-card" key={product.model}>
+          <Link
+            to={`/product/${product.variantIds[0]}`}
+            className="product-card"
+            key={product.model}
+          >
             <h3>{product.name}</h3>
             <p>
               {product.minPrice === product.maxPrice
                 ? `€${product.minPrice.toFixed(2)}`
-                : `from €${product.minPrice.toFixed(2)}`}
+                : `${t('from')} €${product.minPrice.toFixed(2)}`}
             </p>
-          </div>
+          </Link>
         ))}
       </div>
 
       <div className="pagination">
         <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-          Previous
+          {t('previous')}
         </button>
         <span>
-          Page {page} of {totalPages}
+          {t('page')} {page} {t('of')} {totalPages}
         </span>
         <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-          Next
+          {t('next')}
         </button>
       </div>
     </div>

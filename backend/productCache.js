@@ -7,9 +7,10 @@ let cachedProducts = [];
 let cachedGroupedProducts = [];
 let lastRefreshedAt = null;
 
-function applyMarkup(product) {
+export function applyMarkup(product) {
+  const { Price2, ...rest } = product; // Price2 is Promobox's internal/wholesale price, never send it out
   return {
-    ...product,
+    ...rest,
     Price: Math.round(product.Price * MARKUP * 100) / 100,
   };
 }
@@ -50,6 +51,17 @@ export function getProducts() {
 
 export function getGroupedProducts() {
   return cachedGroupedProducts;
+}
+
+// All SKUs sharing the same Model as the given product id (its size/color
+// siblings), used to build the size/color picker on a product detail page.
+export function getSiblings(id) {
+  const product = cachedProducts.find((p) => p.Id === id);
+  if (!product) {
+    return [];
+  }
+  const key = product.Model || product.Name;
+  return cachedProducts.filter((p) => (p.Model || p.Name) === key);
 }
 
 export async function refreshProducts() {

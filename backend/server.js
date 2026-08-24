@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { getGroupedProducts, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getSiblings, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getProductDetail } from './promobox.js';
 
 const app = express();
 const PORT = 3001;
@@ -28,6 +29,22 @@ app.get('/api/products', (req, res) => {
     limit,
     totalPages: Math.ceil(all.length / limit),
   });
+});
+
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const detail = applyMarkup(await getProductDetail(req.params.id));
+    const variants = getSiblings(req.params.id).map((p) => ({
+      id: p.Id,
+      size: p.Size,
+      color: p.Color,
+      price: p.Price,
+    }));
+    res.json({ ...detail, variants });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: 'Could not reach Promobox' });
+  }
 });
 
 await refreshProducts();

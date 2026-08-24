@@ -45,3 +45,22 @@ export async function getAllProducts() {
 
   return res.json();
 }
+
+export async function getProductDetail(id) {
+  const token = await getAccessToken();
+
+  // A handful of ids contain a literal "/" (e.g. size "L/XL"), which breaks
+  // the /api/Product/{id} path form, so id is passed as a query param instead.
+  const url = new URL(`${ROOT}/${CULTURE}/api/Product/`);
+  url.searchParams.set('id', id);
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Promobox product detail fetch failed: ${res.status}`);
+  }
+
+  return res.json();
+}
