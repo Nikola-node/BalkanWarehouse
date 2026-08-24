@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { getGroupedProducts, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
+import { generateOrderNumber, sendOrderEmails } from './email.js';
 
 const app = express();
 const PORT = 3001;
@@ -99,8 +100,6 @@ async function verifyRecaptcha(token) {
   return data.success === true;
 }
 
-// Order emailing isn't wired up yet (needs an SMTP/email provider account) -
-// for now the order is just logged so the flow can be tested end to end.
 app.post('/api/orders', async (req, res) => {
   const { items, customer, paymentMethod, total, recaptchaToken } = req.body || {};
 
@@ -109,8 +108,19 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ error: 'Captcha verification failed' });
   }
 
-  console.log('New order received:', JSON.stringify({ items, customer, paymentMethod, total }, null, 2));
-  res.json({ ok: true });
+  const order = {
+    orderNumber: generateOrderNumber(),
+    createdAt: new Date(),
+    items,
+    customer,
+    paymentMethod,
+    total,
+  };
+
+  console.log('New order received:', JSON.stringify(order, null, 2));
+  await sendOrderEmails(order);
+
+  res.json({ ok: true, orderNumber: order.orderNumber });
 });
 
 await refreshProducts();

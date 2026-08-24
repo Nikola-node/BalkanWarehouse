@@ -71,6 +71,7 @@ function ProductDetail() {
 
     addItem({
       id: product.Id,
+      code: product.ProductIdView,
       model: product.Model?.Name,
       name: product.Model?.Name,
       colorName: product.Color?.Name,
