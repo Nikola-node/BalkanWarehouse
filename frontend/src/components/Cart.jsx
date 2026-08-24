@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import { useCart } from '../CartContext'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
 import { t } from '../i18n'
@@ -62,6 +63,28 @@ function Cart() {
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function handleRemove(id) {
+    Swal.fire({
+      icon: 'warning',
+      text: t('removeConfirmText'),
+      showCancelButton: true,
+      confirmButtonText: t('yes'),
+      cancelButtonText: t('no'),
+      confirmButtonColor: '#111111',
+      cancelButtonColor: '#999999',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        removeItem(id)
+        Swal.fire({
+          icon: 'success',
+          text: t('removedFromCart'),
+          showConfirmButton: false,
+          timer: 1200,
+        })
+      }
+    })
   }
 
   async function handleSubmit(e) {
@@ -148,7 +171,7 @@ function Cart() {
             <button
               type="button"
               className="cart-item-remove"
-              onClick={() => removeItem(item.id)}
+              onClick={() => handleRemove(item.id)}
               aria-label={t('remove')}
             >
               ×

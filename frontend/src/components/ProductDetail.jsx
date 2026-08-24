@@ -4,6 +4,7 @@ import Swal from 'sweetalert2'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
 import { useCart } from '../CartContext'
+import { canFormQuantity } from '../packageQuantity'
 
 function ProductDetail() {
   const { id } = useParams()
@@ -14,12 +15,12 @@ function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [selectedSize, setSelectedSize] = useState('')
-  const [specsOpen, setSpecsOpen] = useState(false)
+  const [specsOpen, setSpecsOpen] = useState(true)
 
   useEffect(() => {
     setLoading(true)
     setActiveImage(0)
-    setSpecsOpen(false)
+    setSpecsOpen(true)
     fetch(`${BACKEND_URL}/api/products/${id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -54,6 +55,20 @@ function ProductDetail() {
   }
 
   function handleAddToCart() {
+    const packageSizes = [product.CommercialPackage, product.Carton].filter(Boolean)
+    if (!canFormQuantity(quantity, packageSizes)) {
+      Swal.fire({
+        icon: 'error',
+        text:
+          packageSizes.length > 0
+            ? `Nevažeća količina. Proizvod se naručuje u pakovanjima od: ${packageSizes.join(', ')} komada.`
+            : 'Nevažeća količina.',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#111111',
+      })
+      return
+    }
+
     addItem({
       id: product.Id,
       model: product.Model?.Name,
