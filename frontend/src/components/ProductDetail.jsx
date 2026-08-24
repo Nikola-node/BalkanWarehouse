@@ -60,6 +60,7 @@ function ProductDetail() {
   }
 
   return (
+    <>
     <div className="product-detail">
       <div className="product-gallery">
         <img
@@ -139,24 +140,28 @@ function ProductDetail() {
 
         <button className="add-to-cart">{t('addToCart')}</button>
 
-        {product.Model?.Description2 && (
-          <div className="product-description">
-            <h2>{t('description')}</h2>
-            <p>{product.Model.Description2}</p>
-          </div>
-        )}
-
         {product.Specifications?.length > 0 && (
-          <ul className="product-specs">
-            {product.Specifications.map((spec) => (
-              <li key={spec.Id}>
-                <strong>{spec.Name}:</strong> {spec.Value}
-              </li>
-            ))}
-          </ul>
+          <>
+            <h2>{t('specification')}</h2>
+            <ul className="product-specs">
+              {product.Specifications.map((spec) => (
+                <li key={spec.Id}>
+                  <strong>{spec.Name}:</strong> {spec.Value}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>
+
+    {product.Model?.Description2 && (
+      <div className="product-description">
+        <h2>{t('description')}</h2>
+        <p>{product.Model.Description2}</p>
+      </div>
+    )}
+    </>
   )
 }
 

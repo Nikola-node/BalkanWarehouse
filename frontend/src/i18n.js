@@ -7,6 +7,7 @@ const strings = {
     quantity: 'Količina',
     addToCart: 'Dodaj u korpu',
     description: 'Opis',
+    specification: 'Specifikacija',
     previous: 'Prethodna',
     next: 'Sledeća',
     page: 'Strana',
