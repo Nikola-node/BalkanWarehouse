@@ -234,22 +234,6 @@
   margin-bottom: 8px;
 }
 
-.add-to-cart-added {
-  animation: add-to-cart-pop 0.4s ease;
-}
-
-@keyframes add-to-cart-pop {
-  0% {
-    transform: scale(1);
-  }
-  35% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 .site-cart-pulse svg {
   animation: cart-bump 0.4s ease;
 }

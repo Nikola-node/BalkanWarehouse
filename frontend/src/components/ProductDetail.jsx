@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
 import { useCart } from '../CartContext'
@@ -14,7 +15,6 @@ function ProductDetail() {
   const [quantity, setQuantity] = useState(1)
   const [selectedSize, setSelectedSize] = useState('')
   const [specsOpen, setSpecsOpen] = useState(false)
-  const [added, setAdded] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -64,8 +64,12 @@ function ProductDetail() {
       image: images[0]?.Image,
       quantity,
     })
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1500)
+    Swal.fire({
+      icon: 'success',
+      text: t('addedToCart'),
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#111111',
+    })
   }
 
   function selectSize(size) {
@@ -162,11 +166,8 @@ function ProductDetail() {
           />
         </label>
 
-        <button
-          className={`add-to-cart ${added ? 'add-to-cart-added' : ''}`}
-          onClick={handleAddToCart}
-        >
-          {added ? t('addedToCart') : t('addToCart')}
+        <button className="add-to-cart" onClick={handleAddToCart}>
+          {t('addToCart')}
         </button>
 
         {product.Specifications?.length > 0 && (

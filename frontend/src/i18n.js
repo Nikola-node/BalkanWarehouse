@@ -20,7 +20,7 @@ const strings = {
     continueShopping: 'Nastavi kupovinu',
     remove: 'Ukloni',
     total: 'Ukupno',
-    addedToCart: 'Dodato u korpu',
+    addedToCart: 'Artikal je dodat u korpu.',
     selectedItems: 'Izabrani artikli',
     clearCart: 'Isprazni korpu',
     itemsCost: 'Cena artikala:',
