@@ -11,10 +11,12 @@ function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [selectedSize, setSelectedSize] = useState('')
+  const [specsOpen, setSpecsOpen] = useState(false)
 
   useEffect(() => {
     setLoading(true)
     setActiveImage(0)
+    setSpecsOpen(false)
     fetch(`${BACKEND_URL}/api/products/${id}`)
       .then((res) => res.json())
       .then((data) => {
@@ -84,10 +86,14 @@ function ProductDetail() {
       </div>
 
       <div className="product-info">
-        <h1>{product.Name}</h1>
-        <p className="product-price">
-          {t('price')}: €{product.Price.toFixed(2)}
+        <h1>{product.Model?.Name}</h1>
+        <p className="product-code">
+          {product.ProductIdView} - {product.Color?.Name?.toUpperCase()}
         </p>
+        {product.Model?.Description && (
+          <p className="product-short-desc">{product.Model.Description}</p>
+        )}
+        <p className="product-price">€{product.Price.toFixed(2)}</p>
         <p className={inStock ? 'stock-in' : 'stock-out'}>
           {inStock ? t('inStock') : t('outOfStock')}
         </p>
@@ -141,16 +147,25 @@ function ProductDetail() {
         <button className="add-to-cart">{t('addToCart')}</button>
 
         {product.Specifications?.length > 0 && (
-          <>
-            <h2>{t('specification')}</h2>
-            <ul className="product-specs">
-              {product.Specifications.map((spec) => (
-                <li key={spec.Id}>
-                  <strong>{spec.Name}:</strong> {spec.Value}
-                </li>
-              ))}
-            </ul>
-          </>
+          <div className="accordion">
+            <button
+              type="button"
+              className="accordion-toggle"
+              onClick={() => setSpecsOpen((open) => !open)}
+            >
+              <span className="accordion-icon">{specsOpen ? '−' : '+'}</span>
+              {t('specification')}
+            </button>
+            {specsOpen && (
+              <ul className="product-specs">
+                {product.Specifications.map((spec) => (
+                  <li key={spec.Id}>
+                    <strong>{spec.Name}:</strong> {spec.Value}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
     </div>

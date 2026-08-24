@@ -114,31 +114,43 @@
 
 .product-info h1 {
   font-size: 24px;
+  margin-bottom: 0;
+}
+
+.product-code {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.product-short-desc {
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
 .product-price {
   font-size: 20px;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .stock-in {
   color: #1a7a1a;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .stock-out {
   color: #b00020;
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .product-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   font-size: 13px;
   color: var(--muted);
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 
 .product-field select,
@@ -193,7 +205,36 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+.accordion {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.accordion-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0;
+}
+
+.accordion-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 .product-description {
