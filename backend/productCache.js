@@ -1,5 +1,5 @@
-import { getAllProducts, getColors } from './promobox.js';
-import { classify, getTree } from './categoryTree.js';
+import { getAllProducts, getColors, getModels } from './promobox.js';
+import { classify, getTree, getUnmappedCombos, resetUnmappedCombos } from './categoryTree.js';
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const MARKUP = 1.1;
@@ -20,8 +20,11 @@ export function applyMarkup(product) {
 
 // Promobox lists one row per size/color variant (SKU). Customers should see
 // one card per real product, so we group all variants sharing the same
-// Model into a single entry with a min-max price range.
-function groupByModel(products) {
+// Model into a single entry with a min-max price range. `modelInfo` maps a
+// Model name to its representative image and GroupWeb1/2/3 codes, both from
+// the separate /api/Model endpoint - the /api/Product list itself has
+// neither an image field nor GroupWeb fields.
+function groupByModel(products, modelInfo) {
   const groups = new Map();
 
   for (const p of products) {
@@ -29,16 +32,20 @@ function groupByModel(products) {
     const existing = groups.get(key);
 
     if (!existing) {
+      const info = modelInfo.get(key);
       const group = {
         model: key,
         name: p.Name,
-        category: p.Category,
-        subCategory: p.SubCategory,
         minPrice: p.Price,
         maxPrice: p.Price,
         variantIds: [p.Id],
+        image: info?.image || null,
       };
-      group.categoryPath = classify(group);
+      group.categoryPath = classify({
+        groupWeb1: info?.groupWeb1,
+        groupWeb2: info?.groupWeb2,
+        groupWeb3: info?.groupWeb3,
+      });
       groups.set(key, group);
     } else {
       existing.minPrice = Math.min(existing.minPrice, p.Price);
@@ -82,14 +89,32 @@ export function getProducts() {
   return cachedProducts;
 }
 
-export function getGroupedProducts({ nodeId } = {}) {
-  if (!nodeId) {
-    return cachedGroupedProducts;
+// Lets a search for "solja" find "šolja" - customers won't reliably type
+// Serbian diacritics, so both sides are folded to plain ASCII before matching.
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .replace(/š/g, 's')
+    .replace(/đ/g, 'dj')
+    .replace(/č/g, 'c')
+    .replace(/ć/g, 'c')
+    .replace(/ž/g, 'z');
+}
+
+export function getGroupedProducts({ nodeId, q } = {}) {
+  let products = cachedGroupedProducts;
+
+  if (nodeId) {
+    const nodePath = nodeId.split('/');
+    products = products.filter((p) => nodePath.every((segment, i) => p.categoryPath[i] === segment));
   }
-  const nodePath = nodeId.split('/');
-  return cachedGroupedProducts.filter((p) =>
-    nodePath.every((segment, i) => p.categoryPath[i] === segment),
-  );
+
+  if (q) {
+    const needle = normalize(q.trim());
+    products = products.filter((p) => normalize(p.name).includes(needle));
+  }
+
+  return products;
 }
 
 export function getCategoryTree() {
@@ -115,11 +140,27 @@ export function getColorInfo(code) {
 
 export async function refreshProducts() {
   try {
-    const [raw, colors] = await Promise.all([getAllProducts(), getColors()]);
+    const [raw, colors, models] = await Promise.all([getAllProducts(), getColors(), getModels()]);
+    const modelInfo = new Map(
+      models.map((m) => [
+        m.Name,
+        { image: m.Image, groupWeb1: m.GroupWeb1, groupWeb2: m.GroupWeb2, groupWeb3: m.GroupWeb3 },
+      ]),
+    );
     cachedProducts = raw.map(applyMarkup);
-    cachedGroupedProducts = groupByModel(cachedProducts);
+    cachedGroupedProducts = groupByModel(cachedProducts, modelInfo);
     cachedColors = colors;
     cachedCategoryTree = buildCategoryTree(cachedGroupedProducts);
+
+    const unmapped = getUnmappedCombos();
+    if (unmapped.length > 0) {
+      console.warn(`${unmapped.length} unmapped GroupWeb combo(s) - add these to categoryTree.js's GROUPWEB_LEAF:`);
+      for (const { combo, count, fallback } of unmapped) {
+        console.warn(`  ${combo} (${count} product${count === 1 ? '' : 's'}) -> falling back to ${fallback ?? '(uncategorized)'}`);
+      }
+    }
+    resetUnmappedCombos();
+
     lastRefreshedAt = new Date();
     console.log(
       `Product cache refreshed: ${cachedProducts.length} SKUs (${cachedGroupedProducts.length} products) at ${lastRefreshedAt.toISOString()}`,

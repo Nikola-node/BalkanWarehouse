@@ -4,6 +4,7 @@ const strings = {
     from: 'od',
     categories: 'Kategorije',
     search: 'Pretraga',
+    searchResultsFor: 'Rezultati pretrage za',
     size: 'Veličina',
     color: 'Boja',
     quantity: 'Količina',

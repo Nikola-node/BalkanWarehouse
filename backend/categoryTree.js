@@ -109,193 +109,224 @@ function n(name) {
   return NODES_BY_PATH.get(name).path;
 }
 
-// --- Classification rules, grouped by the product's real Promobox Category
-// code. Each rule is tested in order against the lowercased product name;
-// the first match wins. If nothing matches, the product falls back to the
-// listed default path (usually just the new main category, sometimes a
-// level-2 node) so it's still browsable, just not filterable to a leaf.
 
-function classifyKS(name) {
-  if (/vinski set|poklon kutija za flašu/.test(name)) return n('kucni-setovi/vinski-setovi');
-  if (/pepeljar/.test(name)) return n('kucni-setovi/kuhinjski-pribor/pepeljare');
-  if (/otvarač za flaš/.test(name)) return n('kucni-setovi/kuhinjski-pribor/otvaraci-za-flase');
-  if (/magnet/.test(name)) return n('kucni-setovi/kuhinjski-pribor/magneti');
-  if (/podmetač|podloga za sublimaciju/.test(name)) return n('kucni-setovi/kuhinjski-pribor/podmetaci');
-  if (/termos/.test(name)) return n('kucni-setovi/termosi');
-  if (/šolj|čaš\w* za (espresso|cappuccino)|keramička činija/.test(name)) {
-    if (/metaln/.test(name)) return n('kucni-setovi/solje/metalne-solje');
-    if (/staklen/.test(name)) return n('kucni-setovi/solje/staklene-solje');
-    return n('kucni-setovi/solje/keramicke-solje');
+// --- Classification, backed by Promobox's own GroupWeb1/GroupWeb2/GroupWeb3
+// fields (from the /api/Model endpoint) - these are the exact fields
+// Promobox's own retail site uses to build this category menu, discovered
+// by noticing the branching counts under every GroupWeb2 code matched this
+// tree's child counts exactly, then confirming each leaf's real product
+// names by hand. This replaced an earlier keyword-guessing classifier that
+// worked from product names alone, since Group1/2/3 (a different, similarly
+// named field on the raw /api/Product endpoint) turned out to be unreliable
+// legacy data with no name lookup - GroupWeb1/2/3 is the real thing.
+const GROUPWEB_LEAF = {
+  'KA|KA-01|KA-01-01': 'kancelarija/notesi-i-agende/notesi',
+  'KA|KA-01|KA-01-07': 'kancelarija/notesi-i-agende/agende',
+  'KA|KA-01|KA-01-09': 'kancelarija/notesi-i-agende/portfolio',
+  'KA|KA-04|KA-04-01': 'kancelarija/kancelarija/setovi-za-beleske',
+  'KA|KA-04|KA-04-05': 'kancelarija/kancelarija/vizitari',
+  'KA|KA-04|KA-04-07': 'kancelarija/kancelarija/kancelarijski-pribor',
+  'KA|KA-04|KA-04-08': 'kancelarija/kancelarija/skolski-pribor',
+  'KA|KA-04|KA-04-09': 'kancelarija/kancelarija/drzaci-za-id-kartice',
+  'KA|KA-04|KA-04-11': 'kancelarija/kancelarija/stone-lampe',
+  'KA|KA-07|KA-07-01': 'kancelarija/satovi',
+  'KA|KA-10|KA-10-01': 'kancelarija/promo-pultovi-i-panoi',
+  'KA|KA-13|KA-13-01': 'kancelarija/poklon-kutije',
+
+  'KS|KS-01|KS-01-01': 'kucni-setovi/solje/keramicke-solje',
+  'KS|KS-01|KS-01-03': 'kucni-setovi/solje/staklene-solje',
+  'KS|KS-01|KS-01-07': 'kucni-setovi/solje/metalne-solje',
+  'KS|KS-04|KS-04-01': 'kucni-setovi/boce/metalne-boce',
+  'KS|KS-04|KS-04-03': 'kucni-setovi/boce/staklene-boce',
+  'KS|KS-04|KS-04-05': 'kucni-setovi/boce/plasticne-boce',
+  'KS|KS-07|KS-07-01': 'kucni-setovi/termosi',
+  'KS|KS-10|KS-10-01': 'kucni-setovi/kuhinjski-pribor/kuhinjski-setovi',
+  'KS|KS-10|KS-10-03': 'kucni-setovi/kuhinjski-pribor/posude',
+  'KS|KS-10|KS-10-05': 'kucni-setovi/kuhinjski-pribor/pepeljare',
+  'KS|KS-10|KS-10-07': 'kucni-setovi/kuhinjski-pribor/otvaraci-za-flase',
+  'KS|KS-10|KS-10-10': 'kucni-setovi/kuhinjski-pribor/magneti',
+  'KS|KS-10|KS-10-13': 'kucni-setovi/kuhinjski-pribor/podmetaci',
+  'KS|KS-13|KS-13-01': 'kucni-setovi/vinski-setovi',
+  'KS|KS-16|KS-16-07': 'kucni-setovi/sport-i-zabava',
+  'KS|KS-22|KS-22-01': 'kucni-setovi/lepota',
+  'KS|KS-25|KS-25-05': 'kucni-setovi/zdravlje-i-zastita',
+  'KS|KS-30|KS-30-01': 'kucni-setovi/upaljaci/plasticni-upaljaci',
+  'KS|KS-30|KS-30-03': 'kucni-setovi/upaljaci/metalni-upaljaci',
+  'KS|KS-30|KS-30-07': 'kucni-setovi/upaljaci/oprema-za-cigare',
+
+  'OL|OL-01|OL-01-01': 'olovke/plasticne-olovke',
+  'OL|OL-03|OL-03-01': 'olovke/metalne-olovke',
+  'OL|OL-05|OL-05-01': 'olovke/setovi-olovaka',
+  'OL|OL-09|OL-09-01': 'olovke/drvene-olovke',
+
+  'PT|PT-01|PT-01-01': 'privesci-alati/privesci/metalni-privesci',
+  'PT|PT-01|PT-01-03': 'privesci-alati/privesci/ostali-privesci',
+  'PT|PT-01|PT-01-05': 'privesci-alati/privesci/drveni-privesci',
+  'PT|PT-01|PT-01-07': 'privesci-alati/privesci/plasticni-privesci',
+  'PT|PT-04|PT-04-01': 'privesci-alati/alati/rucni-alat',
+  'PT|PT-04|PT-04-03': 'privesci-alati/alati/izvidjacka-oprema',
+  'PT|PT-04|PT-04-05': 'privesci-alati/alati/lampe',
+  'PT|PT-04|PT-04-07': 'privesci-alati/alati/merni-pribor',
+  'PT|PT-04|PT-04-09': 'privesci-alati/alati/auto-oprema',
+
+  'TP|TP-01|TP-01-01': 'torbe-putovanje/rancevi/sportski-rancevi',
+  'TP|TP-01|TP-01-03': 'torbe-putovanje/rancevi/poslovni-rancevi',
+  'TP|TP-04|TP-04-01': 'torbe-putovanje/torbe/konferencijske-torbe',
+  'TP|TP-04|TP-04-03': 'torbe-putovanje/torbe/sportske-i-putne-torbe',
+  'TP|TP-04|TP-04-07': 'torbe-putovanje/torbe/frizider-torbe',
+  'TP|TP-07|TP-07-01': 'torbe-putovanje/putni-program',
+  'TP|TP-10|TP-10-01': 'torbe-putovanje/kese/pp-kese',
+  'TP|TP-10|TP-10-03': 'torbe-putovanje/kese/papirne-kese',
+  'TP|TP-10|TP-10-05': 'torbe-putovanje/kese/pamucne-kese',
+  'TP|TP-10|TP-10-09': 'torbe-putovanje/kese/juta-kese',
+  'TP|TP-13|TP-13-01': 'torbe-putovanje/kisobrani/kisobrani',
+  'TP|TP-13|TP-13-03': 'torbe-putovanje/kisobrani/sklopivi-kisobrani',
+
+  'TX|TX-01|TX-01-01': 'tekstil/majice/unisex-majice',
+  'TX|TX-01|TX-01-03': 'tekstil/majice/zenske-majice',
+  'TX|TX-01|TX-01-05': 'tekstil/majice/decije-majice',
+  'TX|TX-01|TX-01-07': 'tekstil/majice/sportske-majice',
+  'TX|TX-04|TX-04-01': 'tekstil/polo-majice/unisex-polo-majice',
+  'TX|TX-04|TX-04-03': 'tekstil/polo-majice/zenske-polo-majice',
+  'TX|TX-07|TX-07-01': 'tekstil/sportska-oprema/duksarice',
+  'TX|TX-07|TX-07-03': 'tekstil/sportska-oprema/donji-deo-trenerki',
+  'TX|TX-07|TX-07-05': 'tekstil/sportska-oprema/sorcevi',
+  'TX|TX-10|TX-10-01': 'tekstil/prsluci/radni-prsluci',
+  'TX|TX-10|TX-10-03': 'tekstil/prsluci/stepani-prsluci',
+  'TX|TX-10|TX-10-05': 'tekstil/prsluci/softshell-prsluci',
+  'TX|TX-13|TX-13-01': 'tekstil/jakne/zimske-jakne-i-vetrovke',
+  'TX|TX-13|TX-13-05': 'tekstil/jakne/softshell-jakne',
+  'TX|TX-16|TX-16-01': 'tekstil/poslovna-oprema/kosulje',
+  'TX|TX-16|TX-16-03': 'tekstil/poslovna-oprema/pantalone',
+  'TX|TX-16|TX-16-05': 'tekstil/poslovna-oprema/kecelje-i-oprema',
+  'TX|TX-16|TX-16-07': 'tekstil/poslovna-oprema/modni-dodaci',
+  'TX|TX-19|TX-19-01': 'tekstil/peskiri',
+  'TX|TX-25|TX-25-01': 'tekstil/kape/kacketi',
+  'TX|TX-25|TX-25-03': 'tekstil/kape/sesiri',
+  'TX|TX-25|TX-25-05': 'tekstil/kape/zimski-program',
+
+  'UB|UB-01|UB-01-01': 'tehnologija/pomocne-baterije',
+  'UB|UB-04|UB-04-01': 'tehnologija/audio-uredjaji/zvucnici',
+  'UB|UB-04|UB-04-03': 'tehnologija/audio-uredjaji/slusalice-bubice',
+  'UB|UB-04|UB-04-05': 'tehnologija/audio-uredjaji/slusalice',
+  'UB|UB-07|UB-07-02': 'tehnologija/auto-oprema',
+  'UB|UB-10|UB-10-05': 'tehnologija/gedzeti',
+  'UB|UB-13|UB-13-05': 'tehnologija/usb/usb',
+  'UB|UB-13|UB-13-11': 'tehnologija/usb/ssd',
+  'UB|UB-16|UB-16-01': 'tehnologija/bezicni-punjaci',
+  'UB|UB-19|UB-19-01': 'tehnologija/usb-kablovi',
+  'UB|UB-22|UB-22-01': 'tehnologija/pametni-satovi',
+  'UB|UB-24|UB-24-01': 'tehnologija/tech-portfolio',
+  'UB|UB-27|UB-27-01': 'tehnologija/kompjuterska-oprema',
+
+  'WW|WW-01|WW-01-01': 'radna-oprema/radna-odeca/radne-pantalone',
+  'WW|WW-01|WW-01-03': 'radna-oprema/radna-odeca/radne-jakne',
+  'WW|WW-01|WW-01-05': 'radna-oprema/radna-odeca/radne-bermude',
+  'WW|WW-01|WW-01-07': 'radna-oprema/radna-odeca/radni-prsluci',
+  'WW|WW-03|WW-03-01': 'radna-oprema/zastitna-obuca/sigurnosna-obuca',
+  'WW|WW-03|WW-03-03': 'radna-oprema/zastitna-obuca/radna-obuca',
+  'WW|WW-05|WW-05-01': 'radna-oprema/sigurnosna-odeca',
+  'WW|WW-07|WW-07-01': 'radna-oprema/dodatna-radna-oprema',
+};
+
+// Falls back a level (GW1|GW2, then just GW1) if a specific leaf combo isn't
+// in the table above - covers new products Promobox adds under an existing
+// branch before this table gets a matching entry for its exact leaf.
+const GROUPWEB_BRANCH = {
+  'KA|KA-01': 'kancelarija/notesi-i-agende',
+  'KA|KA-04': 'kancelarija/kancelarija',
+  'KA|KA-07': 'kancelarija/satovi',
+  'KA|KA-10': 'kancelarija/promo-pultovi-i-panoi',
+  'KA|KA-13': 'kancelarija/poklon-kutije',
+  'KS|KS-01': 'kucni-setovi/solje',
+  'KS|KS-04': 'kucni-setovi/boce',
+  'KS|KS-07': 'kucni-setovi/termosi',
+  'KS|KS-10': 'kucni-setovi/kuhinjski-pribor',
+  'KS|KS-13': 'kucni-setovi/vinski-setovi',
+  'KS|KS-16': 'kucni-setovi/sport-i-zabava',
+  'KS|KS-22': 'kucni-setovi/lepota',
+  'KS|KS-25': 'kucni-setovi/zdravlje-i-zastita',
+  'KS|KS-30': 'kucni-setovi/upaljaci',
+  'OL|OL-01': 'olovke/plasticne-olovke',
+  'OL|OL-03': 'olovke/metalne-olovke',
+  'OL|OL-05': 'olovke/setovi-olovaka',
+  'OL|OL-09': 'olovke/drvene-olovke',
+  'PT|PT-01': 'privesci-alati/privesci',
+  'PT|PT-04': 'privesci-alati/alati',
+  'TP|TP-01': 'torbe-putovanje/rancevi',
+  'TP|TP-04': 'torbe-putovanje/torbe',
+  'TP|TP-07': 'torbe-putovanje/putni-program',
+  'TP|TP-10': 'torbe-putovanje/kese',
+  'TP|TP-13': 'torbe-putovanje/kisobrani',
+  'TX|TX-01': 'tekstil/majice',
+  'TX|TX-04': 'tekstil/polo-majice',
+  'TX|TX-07': 'tekstil/sportska-oprema',
+  'TX|TX-10': 'tekstil/prsluci',
+  'TX|TX-13': 'tekstil/jakne',
+  'TX|TX-16': 'tekstil/poslovna-oprema',
+  'TX|TX-19': 'tekstil/peskiri',
+  'TX|TX-25': 'tekstil/kape',
+  'UB|UB-01': 'tehnologija/pomocne-baterije',
+  'UB|UB-04': 'tehnologija/audio-uredjaji',
+  'UB|UB-07': 'tehnologija/auto-oprema',
+  'UB|UB-10': 'tehnologija/gedzeti',
+  'UB|UB-13': 'tehnologija/usb',
+  'UB|UB-16': 'tehnologija/bezicni-punjaci',
+  'UB|UB-19': 'tehnologija/usb-kablovi',
+  'UB|UB-22': 'tehnologija/pametni-satovi',
+  'UB|UB-24': 'tehnologija/tech-portfolio',
+  'UB|UB-27': 'tehnologija/kompjuterska-oprema',
+  'WW|WW-01': 'radna-oprema/radna-odeca',
+  'WW|WW-03': 'radna-oprema/zastitna-obuca',
+  'WW|WW-05': 'radna-oprema/sigurnosna-odeca',
+  'WW|WW-07': 'radna-oprema/dodatna-radna-oprema',
+};
+
+const GROUPWEB_MAIN = {
+  KA: 'kancelarija',
+  KS: 'kucni-setovi',
+  OL: 'olovke',
+  PT: 'privesci-alati',
+  TP: 'torbe-putovanje',
+  TX: 'tekstil',
+  UB: 'tehnologija',
+  WW: 'radna-oprema',
+};
+
+// Tracks GroupWeb combos that fell back to a broader level instead of
+// hitting an exact leaf entry above - e.g. Promobox adding a new
+// subcategory this table doesn't know about yet. Cleared and re-logged
+// once per refreshProducts() cycle by productCache.js, so a stale miss
+// from a since-discontinued product doesn't linger in the log forever.
+const unmappedCombos = new Map();
+
+export function classify({ groupWeb1, groupWeb2, groupWeb3 }) {
+  if (!groupWeb1) return [];
+
+  const leafKey = `${groupWeb1}|${groupWeb2}|${groupWeb3}`;
+  if (GROUPWEB_LEAF[leafKey]) return n(GROUPWEB_LEAF[leafKey]);
+
+  const branchKey = `${groupWeb1}|${groupWeb2}`;
+  const fallback = GROUPWEB_BRANCH[branchKey] || GROUPWEB_MAIN[groupWeb1] || null;
+  const existing = unmappedCombos.get(leafKey);
+  if (existing) {
+    existing.count += 1;
+  } else {
+    unmappedCombos.set(leafKey, { count: 1, fallback });
   }
-  if (/čaša za poneti/.test(name)) return n('kucni-setovi/boce/plasticne-boce');
-  if (/pljosk/.test(name)) return n('kucni-setovi/boce/metalne-boce');
-  if (/boca/.test(name)) {
-    if (/metaln/.test(name)) return n('kucni-setovi/boce/metalne-boce');
-    if (/staklen/.test(name)) return n('kucni-setovi/boce/staklene-boce');
-    return n('kucni-setovi/boce/plasticne-boce');
-  }
-  if (/set (drvena|kamena|podmetača|za so|za ulje|pribora za sir)|set sa keramičkim posudama|mlin za so|daska za sečenje/.test(name)) {
-    return n('kucni-setovi/kuhinjski-pribor/kuhinjski-setovi');
-  }
-  if (/posuda za hranu/.test(name)) return n('kucni-setovi/kuhinjski-pribor/posude');
-  return n('kucni-setovi');
+
+  if (GROUPWEB_BRANCH[branchKey]) return n(GROUPWEB_BRANCH[branchKey]);
+  if (GROUPWEB_MAIN[groupWeb1]) return n(GROUPWEB_MAIN[groupWeb1]);
+
+  return [];
 }
 
-function classifyRL(subCategory) {
-  if (subCategory === 'RL - 01' || subCategory === 'RL - 02') return n('kucni-setovi/sport-i-zabava');
-  if (subCategory === 'RL - 03') return n('kucni-setovi/lepota');
-  if (subCategory === 'RL - 04' || subCategory === 'RL - 05') return n('kucni-setovi/zdravlje-i-zastita');
-  return n('kucni-setovi');
+export function getUnmappedCombos() {
+  return [...unmappedCombos.entries()].map(([combo, { count, fallback }]) => ({ combo, count, fallback }));
 }
 
-function classifyUP(name) {
-  if (/metaln\w* (upaljač|kremen)|brener metalni/.test(name)) return n('kucni-setovi/upaljaci/metalni-upaljaci');
-  if (/šibic/.test(name)) return n('kucni-setovi/upaljaci/oprema-za-cigare');
-  return n('kucni-setovi/upaljaci/plasticni-upaljaci');
-}
-
-function classifyTE(name) {
-  if (/pomoćn\w* baterij|power ?bank/.test(name)) return n('tehnologija/pomocne-baterije');
-  if (/slušalic/.test(name)) return n('tehnologija/audio-uredjaji/slusalice');
-  if (/zvučnik/.test(name)) return n('tehnologija/audio-uredjaji/zvucnici');
-  if (/pametni sat/.test(name)) return n('tehnologija/pametni-satovi');
-  if (/za automobil/.test(name)) return n('tehnologija/auto-oprema');
-  if (/bežičn\w* punjač/.test(name)) return n('tehnologija/bezicni-punjaci');
-  if (/usb.*kabl|type-c kabl|razdelnik|zidni punjač|multiadapter|\badapter\b/.test(name)) return n('tehnologija/usb-kablovi');
-  if (/podloga za kompjuterskog miša|bežični miš|tastatura/.test(name)) return n('tehnologija/kompjuterska-oprema');
-  return n('tehnologija/gedzeti');
-}
-
-function classifyUB(name) {
-  if (/ssd/.test(name)) return n('tehnologija/usb/ssd');
-  if (/usb flash memorija/.test(name)) return n('tehnologija/usb/usb');
-  if (/poklon kutija|navlaka za usb/.test(name)) return n('kancelarija/poklon-kutije');
-  return n('tehnologija/usb');
-}
-
-function classifyKA(name) {
-  if (/led stona lampa|stona lampa|magnetna levitirajuća lampa|magična plazma sfera lampa/.test(name)) {
-    return n('kancelarija/kancelarija/stone-lampe');
-  }
-  if (/set za beleške|set za pisanje i crtanje/.test(name)) return n('kancelarija/kancelarija/setovi-za-beleske');
-  if (/notes sa olovkom|set za crtanje|set za bojenje|bojanka|drvene bojice|voštane bojice/.test(name)) {
-    return n('kancelarija/kancelarija/skolski-pribor');
-  }
-  if (/novčanik|držač za kartice/.test(name)) return n('kancelarija/kancelarija/drzaci-za-id-kartice');
-  if (/vizitar/.test(name)) return n('kancelarija/kancelarija/vizitari');
-  if (/aluminijumski reklamni|plastični reklamni pult|sklopiva stolica/.test(name)) return n('kancelarija/promo-pultovi-i-panoi');
-  if (/digitalni stoni lcd sat|drveni zidni sat/.test(name)) return n('kancelarija/satovi');
-  if (/poklon kutija/.test(name)) return n('kancelarija/poklon-kutije');
-  if (/držač (za )?mobilnih uređaja|mikrofiber krpica|futrola za pure krpicu|pure krpica/.test(name)) return n('tehnologija/gedzeti');
-  return n('kancelarija/kancelarija/kancelarijski-pribor');
-}
-
-function classifyRK(name) {
-  if (/portfolio/.test(name)) return n('kancelarija/notesi-i-agende/portfolio');
-  if (/rokovnik/.test(name)) return n('kancelarija/notesi-i-agende/agende');
-  if (/notes/.test(name)) return n('kancelarija/notesi-i-agende/notesi');
-  return n('kancelarija/notesi-i-agende');
-}
-
-function classifyOL(subCategory) {
-  if (subCategory === 'OL - 01') return n('olovke/plasticne-olovke');
-  if (subCategory === 'OL - 02') return n('olovke/metalne-olovke');
-  if (subCategory === 'OL - 03') return n('olovke/drvene-olovke');
-  if (subCategory === 'OL - 04') return n('olovke/setovi-olovaka');
-  return n('olovke');
-}
-
-function classifyPT(name, subCategory) {
-  if (subCategory === 'PT - 02') return n('privesci-alati/privesci/ostali-privesci');
-  if (/wood|drven/.test(name)) return n('privesci-alati/privesci/drveni-privesci');
-  if (/metaln/.test(name)) return n('privesci-alati/privesci/metalni-privesci');
-  return n('privesci-alati/privesci/plasticni-privesci');
-}
-
-function classifyAO(name, subCategory) {
-  if (subCategory === 'AO - 01') return n('privesci-alati/alati/lampe');
-  if (subCategory === 'AO - 04') return n('privesci-alati/alati/merni-pribor');
-  if (subCategory === 'AO - 02') return n('privesci-alati/alati/izvidjacka-oprema');
-  if (/ručn\w* alat|odvijač/.test(name)) return n('privesci-alati/alati/rucni-alat');
-  return n('privesci-alati/alati/auto-oprema');
-}
-
-function classifyTP(name) {
-  if (/frižider torb/.test(name)) return n('torbe-putovanje/torbe/frizider-torbe');
-  if (/sportsk\w* torb/.test(name)) return n('torbe-putovanje/torbe/sportske-i-putne-torbe');
-  if (/konferencijsk\w* torb|laptop torb|kozmetičk\w* torb/.test(name)) return n('torbe-putovanje/torbe/konferencijske-torbe');
-  if (/papirna kesa/.test(name)) return n('torbe-putovanje/kese/papirne-kese');
-  if (/pamučn\w* (torb|ranac)|recikliranog pamuka|kanvas/.test(name)) return n('torbe-putovanje/kese/pamucne-kese');
-  if (/jut/.test(name)) return n('torbe-putovanje/kese/juta-kese');
-  if (/poslovni ranac/.test(name)) return n('torbe-putovanje/rancevi/poslovni-rancevi');
-  if (/ranac/.test(name)) return n('torbe-putovanje/rancevi/sportski-rancevi');
-  if (/identifikaciona kartica|navlaka za pasoš|jastuk za putovanje|jastuk od memorijske pene|putni set|putni kofer/.test(name)) {
-    return n('torbe-putovanje/putni-program');
-  }
-  if (/torba/.test(name)) return n('torbe-putovanje/kese/pp-kese');
-  return n('torbe-putovanje');
-}
-
-function classifyKI(name) {
-  if (/sklopiv\w* kišobran/.test(name)) return n('torbe-putovanje/kisobrani/sklopivi-kisobrani');
-  return n('torbe-putovanje/kisobrani/kisobrani');
-}
-
-function classifyTX(name) {
-  if (/zaštitn\w* cipel|radne? patik|(plitk|dubok)\w* (radn|zaštitn)\w* cipel/.test(name)) return n('radna-oprema/zastitna-obuca/sigurnosna-obuca');
-  if (/zaštitn\w* rukavic|rukavice za jednokratnu|zaštitni šlem|\bhelmet\b|radn\w* kaiš|radne čarape/.test(name)) return n('radna-oprema/dodatna-radna-oprema');
-  if (/sigurnosn\w* (prsluk|.*jakna|.*odeć)|hi-?viz/.test(name)) return n('radna-oprema/sigurnosna-odeca');
-  if (/polukombinezon/.test(name)) return n('radna-oprema/radna-odeca/radne-pantalone');
-  if (/radn\w* berm|servisn\w* radn\w* berm/.test(name)) return n('radna-oprema/radna-odeca/radne-bermude');
-  if (/radn\w* (jakna|bluza)/.test(name)) return n('radna-oprema/radna-odeca/radne-jakne');
-  if (/radn\w* prsluk/.test(name)) return n('radna-oprema/radna-odeca/radni-prsluci');
-  if (/(radn\w*|servisn\w* radn\w*) pantalon/.test(name)) return n('radna-oprema/radna-odeca/radne-pantalone');
-
-  if (/peškir|ćebence|mikrofiber/.test(name)) return n('tekstil/peskiri');
-  if (/kačket|vizir kačket/.test(name)) return n('tekstil/kape/kacketi');
-  if (/šeš(i|e)r/.test(name)) return n('tekstil/kape/sesiri');
-  if (/zimsk\w* (kapa|šal)|\bšal\b/.test(name)) return n('tekstil/kape/zimski-program');
-  if (/kecelj/.test(name)) return n('tekstil/poslovna-oprema/kecelje-i-oprema');
-  if (/košulj/.test(name)) return n('tekstil/poslovna-oprema/kosulje');
-  if (/touch.*prsta/.test(name)) return n('tekstil/poslovna-oprema/modni-dodaci');
-  if (/softshell.*jakn/.test(name)) return n('tekstil/jakne/softshell-jakne');
-  if (/softshell.*prsluk/.test(name)) return n('tekstil/prsluci/softshell-prsluci');
-  if (/jakn|vetrovk/.test(name)) return n('tekstil/jakne/zimske-jakne-i-vetrovke');
-  if (/prsluk/.test(name)) return n('tekstil/prsluci/stepani-prsluci');
-  if (/polo majic/.test(name)) {
-    return /žensk|lady/.test(name) ? n('tekstil/polo-majice/zenske-polo-majice') : n('tekstil/polo-majice/unisex-polo-majice');
-  }
-  if (/dukseric|hoody/.test(name)) return n('tekstil/sportska-oprema/duksarice');
-  if (/donji deo trenerk/.test(name)) return n('tekstil/sportska-oprema/donji-deo-trenerki');
-  if (/šorts/.test(name)) return n('tekstil/sportska-oprema/sorcevi');
-  if (/pantalon/.test(name)) return n('tekstil/poslovna-oprema/pantalone');
-  if (/sportsk\w* majic|majica.*raglan/.test(name)) return n('tekstil/majice/sportske-majice');
-  if (/majic/.test(name)) {
-    if (/dečj|kid/.test(name)) return n('tekstil/majice/decije-majice');
-    if (/žensk|lady/.test(name)) return n('tekstil/majice/zenske-majice');
-    return n('tekstil/majice/unisex-majice');
-  }
-  return n('tekstil');
-}
-
-export function classify(product) {
-  const name = product.name.toLowerCase();
-  switch (product.category) {
-    case 'KS': return classifyKS(name);
-    case 'RL': return classifyRL(product.subCategory);
-    case 'UP': return classifyUP(name);
-    case 'TE': return classifyTE(name);
-    case 'UB': return classifyUB(name);
-    case 'KA': return classifyKA(name);
-    case 'RK': return classifyRK(name);
-    case 'OL': return classifyOL(product.subCategory);
-    case 'PT': return classifyPT(name, product.subCategory);
-    case 'AO': return classifyAO(name, product.subCategory);
-    case 'TP': return classifyTP(name);
-    case 'KI': return classifyKI(name);
-    case 'TX': return classifyTX(name);
-    default: return [];
-  }
+export function resetUnmappedCombos() {
+  unmappedCombos.clear();
 }
 
 export function getTree() {

@@ -46,6 +46,22 @@ export async function getAllProducts() {
   return res.json();
 }
 
+// One entry per Model (matches product.Model 1:1), carries the model's
+// representative image - the /api/Product list itself has no image field.
+export async function getModels() {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${ROOT}/${CULTURE}/api/Model`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Promobox model fetch failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function getColors() {
   const token = await getAccessToken();
 

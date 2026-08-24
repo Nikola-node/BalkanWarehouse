@@ -22,8 +22,9 @@ app.get('/api/categories', (req, res) => {
 
 app.get('/api/products', (req, res) => {
   const nodeId = req.query.nodeId || undefined;
+  const q = req.query.q || undefined;
 
-  const all = getGroupedProducts({ nodeId });
+  const all = getGroupedProducts({ nodeId, q });
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 24);
@@ -32,9 +33,11 @@ app.get('/api/products', (req, res) => {
   const items = all.slice(start, start + limit);
 
   let filter = null;
-  if (nodeId) {
+  if (q) {
+    filter = { type: 'search', query: q };
+  } else if (nodeId) {
     const node = getNode(nodeId);
-    filter = node ? { id: node.id, name: node.name } : null;
+    filter = node ? { type: 'category', name: node.name } : null;
   }
 
   res.json({

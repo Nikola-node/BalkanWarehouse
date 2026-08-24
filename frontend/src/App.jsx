@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Route, Routes } from 'react-router-dom'
+import { Link, Route, Routes, useNavigate } from 'react-router-dom'
 import ProductGrid from './components/ProductGrid'
 import ProductDetail from './components/ProductDetail'
 import Cart from './components/Cart'
@@ -43,6 +43,34 @@ function CartIcon() {
   )
 }
 
+function SearchBar() {
+  const [query, setQuery] = useState('')
+  const navigate = useNavigate()
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const trimmed = query.trim()
+    if (trimmed) navigate(`/?q=${encodeURIComponent(trimmed)}`)
+  }
+
+  return (
+    <form className="site-search" onSubmit={handleSubmit}>
+      <input
+        type="text"
+        placeholder={t('search')}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <button type="submit" aria-label={t('search')}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
+    </form>
+  )
+}
+
 function App() {
   return (
     <div>
@@ -50,12 +78,7 @@ function App() {
         <Link to="/" className="site-logo">
           WebShop
         </Link>
-        <div className="site-search">
-          <input type="text" placeholder={t('search')} disabled />
-          <button type="button" disabled aria-label={t('search')}>
-            🔍
-          </button>
-        </div>
+        <SearchBar />
         <CartIcon />
       </header>
 
