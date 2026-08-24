@@ -2,6 +2,8 @@ const strings = {
   sr: {
     price: 'Cena',
     from: 'od',
+    categories: 'Kategorije',
+    search: 'Pretraga',
     size: 'Veličina',
     color: 'Boja',
     quantity: 'Količina',

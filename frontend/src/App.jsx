@@ -3,7 +3,9 @@ import { Link, Route, Routes } from 'react-router-dom'
 import ProductGrid from './components/ProductGrid'
 import ProductDetail from './components/ProductDetail'
 import Cart from './components/Cart'
+import CategoryMenu from './components/CategoryMenu'
 import { useCart } from './CartContext'
+import { t } from './i18n'
 import './App.css'
 
 function CartIcon() {
@@ -48,8 +50,18 @@ function App() {
         <Link to="/" className="site-logo">
           WebShop
         </Link>
+        <div className="site-search">
+          <input type="text" placeholder={t('search')} disabled />
+          <button type="button" disabled aria-label={t('search')}>
+            🔍
+          </button>
+        </div>
         <CartIcon />
       </header>
+
+      <nav className="site-nav-bar">
+        <CategoryMenu />
+      </nav>
 
       <main className="site-content">
         <Routes>

@@ -1,4 +1,5 @@
 import { getAllProducts, getColors } from './promobox.js';
+import { classify, getTree } from './categoryTree.js';
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const MARKUP = 1.1;
@@ -6,6 +7,7 @@ const MARKUP = 1.1;
 let cachedProducts = [];
 let cachedGroupedProducts = [];
 let cachedColors = [];
+let cachedCategoryTree = [];
 let lastRefreshedAt = null;
 
 export function applyMarkup(product) {
@@ -27,7 +29,7 @@ function groupByModel(products) {
     const existing = groups.get(key);
 
     if (!existing) {
-      groups.set(key, {
+      const group = {
         model: key,
         name: p.Name,
         category: p.Category,
@@ -35,7 +37,9 @@ function groupByModel(products) {
         minPrice: p.Price,
         maxPrice: p.Price,
         variantIds: [p.Id],
-      });
+      };
+      group.categoryPath = classify(group);
+      groups.set(key, group);
     } else {
       existing.minPrice = Math.min(existing.minPrice, p.Price);
       existing.maxPrice = Math.max(existing.maxPrice, p.Price);
@@ -46,12 +50,50 @@ function groupByModel(products) {
   return Array.from(groups.values());
 }
 
+// Each grouped product carries a `categoryPath` from classify() - the id
+// path (e.g. ['tekstil','majice','unisex-majice']) of the deepest tree node
+// it could be matched to. This walks the static tree and attaches a product
+// count to every node by counting products whose categoryPath starts with
+// that node's own path - so a main category's count includes products only
+// classified that shallowly, plus everything under its subcategories. Nodes
+// with no products are dropped so the menu never shows a dead-end filter.
+function buildCategoryTree(groupedProducts) {
+  const counts = new Map();
+  for (const p of groupedProducts) {
+    for (let depth = 1; depth <= p.categoryPath.length; depth++) {
+      const id = p.categoryPath.slice(0, depth).join('/');
+      counts.set(id, (counts.get(id) || 0) + 1);
+    }
+  }
+
+  function build(nodes) {
+    return nodes
+      .map((node) => {
+        const children = node.children ? build(node.children) : undefined;
+        return { id: node.id, name: node.name, count: counts.get(node.id) || 0, children };
+      })
+      .filter((node) => node.count > 0);
+  }
+
+  return build(getTree());
+}
+
 export function getProducts() {
   return cachedProducts;
 }
 
-export function getGroupedProducts() {
-  return cachedGroupedProducts;
+export function getGroupedProducts({ nodeId } = {}) {
+  if (!nodeId) {
+    return cachedGroupedProducts;
+  }
+  const nodePath = nodeId.split('/');
+  return cachedGroupedProducts.filter((p) =>
+    nodePath.every((segment, i) => p.categoryPath[i] === segment),
+  );
+}
+
+export function getCategoryTree() {
+  return cachedCategoryTree;
 }
 
 // All SKUs sharing the same Model as the given product id (its size/color
@@ -77,6 +119,7 @@ export async function refreshProducts() {
     cachedProducts = raw.map(applyMarkup);
     cachedGroupedProducts = groupByModel(cachedProducts);
     cachedColors = colors;
+    cachedCategoryTree = buildCategoryTree(cachedGroupedProducts);
     lastRefreshedAt = new Date();
     console.log(
       `Product cache refreshed: ${cachedProducts.length} SKUs (${cachedGroupedProducts.length} products) at ${lastRefreshedAt.toISOString()}`,

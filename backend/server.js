@@ -1,8 +1,9 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { getGroupedProducts, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
+import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails } from './email.js';
 
 const app = express();
@@ -15,8 +16,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/api/categories', (req, res) => {
+  res.json(getCategoryTree());
+});
+
 app.get('/api/products', (req, res) => {
-  const all = getGroupedProducts();
+  const nodeId = req.query.nodeId || undefined;
+
+  const all = getGroupedProducts({ nodeId });
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 24);
@@ -24,12 +31,19 @@ app.get('/api/products', (req, res) => {
   const start = (page - 1) * limit;
   const items = all.slice(start, start + limit);
 
+  let filter = null;
+  if (nodeId) {
+    const node = getNode(nodeId);
+    filter = node ? { id: node.id, name: node.name } : null;
+  }
+
   res.json({
     items,
     total: all.length,
     page,
     limit,
     totalPages: Math.ceil(all.length / limit),
+    filter,
   });
 });
 
