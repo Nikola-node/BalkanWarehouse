@@ -62,6 +62,22 @@ export async function getModels() {
   return res.json();
 }
 
+// Bulk stock levels for every SKU across all warehouses - the product list
+// and model list endpoints carry neither.
+export async function getProductStock() {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${ROOT}/${CULTURE}/api/ProductStock`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Promobox stock fetch failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function getColors() {
   const token = await getAccessToken();
 

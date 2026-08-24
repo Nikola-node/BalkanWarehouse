@@ -1,7 +1,7 @@
 const strings = {
   sr: {
     price: 'Cena',
-    from: 'od',
+    more: 'više',
     categories: 'Kategorije',
     search: 'Pretraga',
     searchResultsFor: 'Rezultati pretrage za',
@@ -13,8 +13,9 @@ const strings = {
     specification: 'Specifikacija',
     previous: 'Prethodna',
     next: 'Sledeća',
-    page: 'Strana',
+    lastPage: 'Poslednja strana',
     of: 'od',
+    results: 'rezultata',
     loading: 'Učitavanje...',
     inStock: 'Na stanju',
     outOfStock: 'Nema na stanju',

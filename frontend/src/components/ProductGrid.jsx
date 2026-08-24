@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
+import ProductCard from './ProductCard'
+import Pagination from './Pagination'
 
 const PAGE_SIZE = 32 // 4 columns x 8 rows
 
@@ -12,6 +14,7 @@ function ProductGrid() {
   const page = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
 
   const [items, setItems] = useState([])
+  const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(null)
@@ -25,6 +28,7 @@ function ProductGrid() {
       .then((res) => res.json())
       .then((data) => {
         setItems(data.items)
+        setTotal(data.total)
         setTotalPages(data.totalPages)
         setFilter(data.filter)
         setLoading(false)
@@ -56,35 +60,17 @@ function ProductGrid() {
         <>
           <div className="product-grid">
             {items.map((product) => (
-              <Link
-                to={`/product/${product.variantIds[0]}`}
-                className="product-card"
-                key={product.model}
-              >
-                <div className="product-card-image">
-                  {product.image && <img src={product.image} alt={product.name} loading="lazy" />}
-                </div>
-                <h3>{product.name}</h3>
-                <p>
-                  {product.minPrice === product.maxPrice
-                    ? `€${product.minPrice.toFixed(2)}`
-                    : `${t('from')} €${product.minPrice.toFixed(2)}`}
-                </p>
-              </Link>
+              <ProductCard product={product} key={product.model} />
             ))}
           </div>
 
-          <div className="pagination">
-            <button disabled={page <= 1} onClick={() => goToPage(page - 1)}>
-              {t('previous')}
-            </button>
-            <span>
-              {t('page')} {page} {t('of')} {totalPages}
-            </span>
-            <button disabled={page >= totalPages} onClick={() => goToPage(page + 1)}>
-              {t('next')}
-            </button>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={goToPage}
+          />
         </>
       )}
     </div>

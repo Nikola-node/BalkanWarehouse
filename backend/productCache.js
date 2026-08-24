@@ -1,4 +1,4 @@
-import { getAllProducts, getColors, getModels } from './promobox.js';
+import { getAllProducts, getColors, getModels, getProductStock } from './promobox.js';
 import { classify, getTree, getUnmappedCombos, resetUnmappedCombos } from './categoryTree.js';
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -20,26 +20,34 @@ export function applyMarkup(product) {
 
 // Promobox lists one row per size/color variant (SKU). Customers should see
 // one card per real product, so we group all variants sharing the same
-// Model into a single entry with a min-max price range. `modelInfo` maps a
-// Model name to its representative image and GroupWeb1/2/3 codes, both from
-// the separate /api/Model endpoint - the /api/Product list itself has
-// neither an image field nor GroupWeb fields.
-function groupByModel(products, modelInfo) {
+// Model into a single entry with a min-max price range, every color offered,
+// and total stock across all of them. `modelInfo` maps a Model name to its
+// image/description/GroupWeb data (from /api/Model), `stockByProduct` maps a
+// SKU id to its total stock across warehouses (from /api/ProductStock), and
+// `colorInfo` maps a color code to its display name and swatch hex (from
+// /api/Color) - none of this lives on the /api/Product list itself.
+function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
   const groups = new Map();
 
   for (const p of products) {
     const key = p.Model || p.Name;
     const existing = groups.get(key);
+    const stockQty = stockByProduct.get(p.Id) || 0;
 
     if (!existing) {
       const info = modelInfo.get(key);
       const group = {
         model: key,
         name: p.Name,
+        code: info?.code || null,
+        description: info?.description || null,
         minPrice: p.Price,
         maxPrice: p.Price,
         variantIds: [p.Id],
         image: info?.image || null,
+        imageHover: info?.imageHover || null,
+        stockQty,
+        colorCodes: new Set(p.Color ? [p.Color] : []),
       };
       group.categoryPath = classify({
         groupWeb1: info?.groupWeb1,
@@ -51,10 +59,19 @@ function groupByModel(products, modelInfo) {
       existing.minPrice = Math.min(existing.minPrice, p.Price);
       existing.maxPrice = Math.max(existing.maxPrice, p.Price);
       existing.variantIds.push(p.Id);
+      existing.stockQty += stockQty;
+      if (p.Color) existing.colorCodes.add(p.Color);
     }
   }
 
-  return Array.from(groups.values());
+  return Array.from(groups.values()).map((group) => {
+    const { colorCodes, ...rest } = group;
+    const colors = [...colorCodes]
+      .map((code) => colorInfo.get(code))
+      .filter(Boolean)
+      .map((c) => ({ id: c.Id, name: c.Name, htmlColor: c.HtmlColor }));
+    return { ...rest, colors, inStock: rest.stockQty > 0 };
+  });
 }
 
 // Each grouped product carries a `categoryPath` from classify() - the id
@@ -140,15 +157,34 @@ export function getColorInfo(code) {
 
 export async function refreshProducts() {
   try {
-    const [raw, colors, models] = await Promise.all([getAllProducts(), getColors(), getModels()]);
+    const [raw, colors, models, stock] = await Promise.all([
+      getAllProducts(),
+      getColors(),
+      getModels(),
+      getProductStock(),
+    ]);
     const modelInfo = new Map(
       models.map((m) => [
         m.Name,
-        { image: m.Image, groupWeb1: m.GroupWeb1, groupWeb2: m.GroupWeb2, groupWeb3: m.GroupWeb3 },
+        {
+          image: m.Image,
+          imageHover: m.ImageHover?.trim() || null,
+          code: `${m.Id.slice(0, 2)}.${m.Id.slice(2)}`,
+          description: m.Description,
+          groupWeb1: m.GroupWeb1,
+          groupWeb2: m.GroupWeb2,
+          groupWeb3: m.GroupWeb3,
+        },
       ]),
     );
+    const stockByProduct = new Map();
+    for (const row of stock) {
+      stockByProduct.set(row.ProductId, (stockByProduct.get(row.ProductId) || 0) + row.Qty);
+    }
+    const colorInfo = new Map(colors.map((c) => [c.Id, c]));
+
     cachedProducts = raw.map(applyMarkup);
-    cachedGroupedProducts = groupByModel(cachedProducts, modelInfo);
+    cachedGroupedProducts = groupByModel(cachedProducts, modelInfo, stockByProduct, colorInfo);
     cachedColors = colors;
     cachedCategoryTree = buildCategoryTree(cachedGroupedProducts);
 

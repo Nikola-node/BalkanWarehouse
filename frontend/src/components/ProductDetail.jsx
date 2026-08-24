@@ -5,6 +5,7 @@ import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
 import { useCart } from '../CartContext'
 import { canFormQuantity } from '../packageQuantity'
+import { swatchColor } from '../colorSwatch'
 
 function ProductDetail() {
   const { id } = useParams()
@@ -150,9 +151,8 @@ function ProductDetail() {
                 >
                   <span
                     className="color-swatch-dot"
-                    style={{ backgroundColor: v.htmlColor || '#ccc' }}
+                    style={{ backgroundColor: swatchColor(v.color, v.htmlColor) }}
                   />
-                  {v.colorName}
                 </button>
               ))}
             </div>
