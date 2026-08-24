@@ -8,6 +8,7 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors());
+app.use(express.json());
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -77,6 +78,39 @@ app.get('/api/products/:id', async (req, res) => {
     console.error(err);
     res.status(502).json({ error: 'Could not reach Promobox' });
   }
+});
+
+// Verifies the reCAPTCHA token with Google before trusting an order came
+// from a human. Skipped (with a warning) if the secret key isn't set yet,
+// so the order flow still works while you're setting up reCAPTCHA.
+async function verifyRecaptcha(token) {
+  if (!process.env.RECAPTCHA_SECRET_KEY) {
+    console.warn('RECAPTCHA_SECRET_KEY not set - skipping captcha verification');
+    return true;
+  }
+  if (!token) return false;
+
+  const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ secret: process.env.RECAPTCHA_SECRET_KEY, response: token }),
+  });
+  const data = await res.json();
+  return data.success === true;
+}
+
+// Order emailing isn't wired up yet (needs an SMTP/email provider account) -
+// for now the order is just logged so the flow can be tested end to end.
+app.post('/api/orders', async (req, res) => {
+  const { items, customer, paymentMethod, total, recaptchaToken } = req.body || {};
+
+  const humanVerified = await verifyRecaptcha(recaptchaToken);
+  if (!humanVerified) {
+    return res.status(400).json({ error: 'Captcha verification failed' });
+  }
+
+  console.log('New order received:', JSON.stringify({ items, customer, paymentMethod, total }, null, 2));
+  res.json({ ok: true });
 });
 
 await refreshProducts();

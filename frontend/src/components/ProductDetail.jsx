@@ -2,16 +2,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
+import { useCart } from '../CartContext'
 
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { addItem } = useCart()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [selectedSize, setSelectedSize] = useState('')
   const [specsOpen, setSpecsOpen] = useState(false)
+  const [added, setAdded] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -48,6 +51,21 @@ function ProductDetail() {
     const sameColor = product.variants.filter((v) => v.color === color)
     const match = sameColor.find((v) => v.size === selectedSize) || sameColor[0]
     navigate(`/product/${match.id}`)
+  }
+
+  function handleAddToCart() {
+    addItem({
+      id: product.Id,
+      model: product.Model?.Name,
+      name: product.Model?.Name,
+      colorName: product.Color?.Name,
+      size: product.Size?.Id || selectedSize,
+      price: product.Price,
+      image: images[0]?.Image,
+      quantity,
+    })
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1500)
   }
 
   function selectSize(size) {
@@ -144,7 +162,12 @@ function ProductDetail() {
           />
         </label>
 
-        <button className="add-to-cart">{t('addToCart')}</button>
+        <button
+          className={`add-to-cart ${added ? 'add-to-cart-added' : ''}`}
+          onClick={handleAddToCart}
+        >
+          {added ? t('addedToCart') : t('addToCart')}
+        </button>
 
         {product.Specifications?.length > 0 && (
           <div className="accordion">
