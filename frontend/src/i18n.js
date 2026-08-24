@@ -3,6 +3,7 @@ const strings = {
     price: 'Cena',
     from: 'od',
     size: 'Veličina',
+    color: 'Boja',
     quantity: 'Količina',
     addToCart: 'Dodaj u korpu',
     description: 'Opis',

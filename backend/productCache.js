@@ -1,10 +1,11 @@
-import { getAllProducts } from './promobox.js';
+import { getAllProducts, getColors } from './promobox.js';
 
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 const MARKUP = 1.1;
 
 let cachedProducts = [];
 let cachedGroupedProducts = [];
+let cachedColors = [];
 let lastRefreshedAt = null;
 
 export function applyMarkup(product) {
@@ -64,11 +65,18 @@ export function getSiblings(id) {
   return cachedProducts.filter((p) => (p.Model || p.Name) === key);
 }
 
+// Looks up a color code (e.g. "B - BL") in the Color codebook for its
+// display name and swatch hex value.
+export function getColorInfo(code) {
+  return cachedColors.find((c) => c.Id === code) || null;
+}
+
 export async function refreshProducts() {
   try {
-    const raw = await getAllProducts();
+    const [raw, colors] = await Promise.all([getAllProducts(), getColors()]);
     cachedProducts = raw.map(applyMarkup);
     cachedGroupedProducts = groupByModel(cachedProducts);
+    cachedColors = colors;
     lastRefreshedAt = new Date();
     console.log(
       `Product cache refreshed: ${cachedProducts.length} SKUs (${cachedGroupedProducts.length} products) at ${lastRefreshedAt.toISOString()}`,

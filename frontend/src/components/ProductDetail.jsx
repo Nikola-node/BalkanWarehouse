@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
 
 function ProductDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeImage, setActiveImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [selectedSize, setSelectedSize] = useState('')
 
   useEffect(() => {
     setLoading(true)
@@ -17,6 +19,7 @@ function ProductDetail() {
       .then((res) => res.json())
       .then((data) => {
         setProduct(data)
+        setSelectedSize(data.Size?.Id || '')
         setLoading(false)
       })
   }, [id])
@@ -27,8 +30,34 @@ function ProductDetail() {
 
   const images = product.Images || []
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))]
-  const colors = [...new Set(product.variants.map((v) => v.color).filter(Boolean))]
   const inStock = (product.Stocks || []).some((s) => s.Qty > 0)
+
+  // One entry per distinct color, first variant seen used as its representative.
+  const colors = []
+  const seenColors = new Set()
+  for (const v of product.variants) {
+    if (v.color && !seenColors.has(v.color)) {
+      seenColors.add(v.color)
+      colors.push(v)
+    }
+  }
+
+  function selectColor(color) {
+    const sameColor = product.variants.filter((v) => v.color === color)
+    const match = sameColor.find((v) => v.size === selectedSize) || sameColor[0]
+    navigate(`/product/${match.id}`)
+  }
+
+  function selectSize(size) {
+    setSelectedSize(size)
+    const currentColor = product.Color?.Id
+    const match =
+      product.variants.find((v) => v.size === size && v.color === currentColor) ||
+      product.variants.find((v) => v.size === size)
+    if (match && match.id !== id) {
+      navigate(`/product/${match.id}`)
+    }
+  }
 
   return (
     <div className="product-detail">
@@ -62,10 +91,33 @@ function ProductDetail() {
           {inStock ? t('inStock') : t('outOfStock')}
         </p>
 
+        {colors.length > 1 && (
+          <div className="product-field">
+            {t('color')}
+            <div className="color-swatches">
+              {colors.map((v) => (
+                <button
+                  key={v.color}
+                  type="button"
+                  className={`color-swatch ${v.color === product.Color?.Id ? 'active' : ''}`}
+                  onClick={() => selectColor(v.color)}
+                  title={v.colorName}
+                >
+                  <span
+                    className="color-swatch-dot"
+                    style={{ backgroundColor: v.htmlColor || '#ccc' }}
+                  />
+                  {v.colorName}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {sizes.length > 0 && (
           <label className="product-field">
             {t('size')}
-            <select defaultValue={sizes[0]}>
+            <select value={selectedSize} onChange={(e) => selectSize(e.target.value)}>
               {sizes.map((size) => (
                 <option key={size} value={size}>
                   {size}
@@ -73,10 +125,6 @@ function ProductDetail() {
               ))}
             </select>
           </label>
-        )}
-
-        {colors.length > 1 && (
-          <p className="product-colors">Dostupne boje: {colors.join(', ')}</p>
         )}
 
         <label className="product-field">

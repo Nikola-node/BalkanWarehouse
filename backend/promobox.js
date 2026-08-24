@@ -46,6 +46,20 @@ export async function getAllProducts() {
   return res.json();
 }
 
+export async function getColors() {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${ROOT}/${CULTURE}/api/Color`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Promobox color fetch failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function getProductDetail(id) {
   const token = await getAccessToken();
 

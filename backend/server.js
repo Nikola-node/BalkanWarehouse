@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { getGroupedProducts, getSiblings, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 
 const app = express();
@@ -34,12 +34,17 @@ app.get('/api/products', (req, res) => {
 app.get('/api/products/:id', async (req, res) => {
   try {
     const detail = applyMarkup(await getProductDetail(req.params.id));
-    const variants = getSiblings(req.params.id).map((p) => ({
-      id: p.Id,
-      size: p.Size,
-      color: p.Color,
-      price: p.Price,
-    }));
+    const variants = getSiblings(req.params.id).map((p) => {
+      const colorInfo = getColorInfo(p.Color);
+      return {
+        id: p.Id,
+        size: p.Size,
+        color: p.Color,
+        colorName: colorInfo?.Name || p.Color,
+        htmlColor: colorInfo?.HtmlColor || '',
+        price: p.Price,
+      };
+    });
     res.json({ ...detail, variants });
   } catch (err) {
     console.error(err);
