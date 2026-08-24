@@ -142,7 +142,7 @@ export async function sendOrderEmails(order) {
     return;
   }
 
-  const from = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+  const from = process.env.RESEND_FROM_EMAIL || 'WebShop <onboarding@resend.dev>';
   const html = buildOrderHtml(order);
 
   const notifyTo = process.env.ORDER_NOTIFICATION_EMAIL;
