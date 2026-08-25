@@ -8,69 +8,95 @@
 // below, grouped by their real Promobox category since that keeps the
 // keyword rules narrow and avoids false positives across unrelated domains.
 const TREE = [
-  { name: 'Kućni setovi', children: [
-    { name: 'Šolje', children: [{ name: 'Keramičke šolje' }, { name: 'Staklene šolje' }, { name: 'Metalne šolje' }] },
-    { name: 'Boce', children: [{ name: 'Metalne boce' }, { name: 'Staklene boce' }, { name: 'Plastične boce' }] },
-    { name: 'Termosi' },
-    { name: 'Kuhinjski pribor', children: [
-      { name: 'Kuhinjski setovi' }, { name: 'Posude' }, { name: 'Pepeljare' },
-      { name: 'Otvarači za flaše' }, { name: 'Magneti' }, { name: 'Podmetači' },
+  { name: 'Kućni setovi', nameEn: 'Home', children: [
+    { name: 'Šolje', nameEn: 'Mugs', children: [
+      { name: 'Keramičke šolje', nameEn: 'Ceramic mugs' }, { name: 'Staklene šolje', nameEn: 'Glass mugs' }, { name: 'Metalne šolje', nameEn: 'Metal mugs' },
     ] },
-    { name: 'Vinski setovi' },
-    { name: 'Sport i zabava' },
-    { name: 'Lepota' },
-    { name: 'Zdravlje i zaštita' },
-    { name: 'Upaljači', children: [{ name: 'Plastični upaljači' }, { name: 'Metalni upaljači' }, { name: 'Oprema za cigare' }] },
-  ] },
-  { name: 'Tehnologija', children: [
-    { name: 'Pomoćne baterije' },
-    { name: 'Audio uređaji', children: [{ name: 'Zvučnici' }, { name: 'Slušalice' }, { name: 'Slušalice bubice' }] },
-    { name: 'Auto oprema' },
-    { name: 'Gedžeti' },
-    { name: 'USB', children: [{ name: 'USB' }, { name: 'SSD' }] },
-    { name: 'Bežični punjači' },
-    { name: 'USB kablovi' },
-    { name: 'Pametni satovi' },
-    { name: 'Tech portfolio' },
-    { name: 'Kompjuterska oprema' },
-  ] },
-  { name: 'Kancelarija', children: [
-    { name: 'Notesi i agende', children: [{ name: 'Notesi' }, { name: 'Agende' }, { name: 'Portfolio' }] },
-    { name: 'Kancelarija', children: [
-      { name: 'Setovi za beleške' }, { name: 'Vizitari' }, { name: 'Kancelarijski pribor' },
-      { name: 'Školski pribor' }, { name: 'Držači za ID kartice' }, { name: 'Stone lampe' },
+    { name: 'Boce', nameEn: 'Bottles', children: [
+      { name: 'Metalne boce', nameEn: 'Metal bottles' }, { name: 'Staklene boce', nameEn: 'Glass bottles' }, { name: 'Plastične boce', nameEn: 'Plastic bottles' },
     ] },
-    { name: 'Satovi' },
-    { name: 'Promo pultovi i panoi' },
-    { name: 'Poklon kutije' },
+    { name: 'Termosi', nameEn: 'Thermoses' },
+    { name: 'Kuhinjski pribor', nameEn: 'Kitchen utensils', children: [
+      { name: 'Kuhinjski setovi', nameEn: 'Kitchen sets' }, { name: 'Posude', nameEn: 'Dishware' }, { name: 'Pepeljare', nameEn: 'Ashtrays' },
+      { name: 'Otvarači za flaše', nameEn: 'Bottle openers' }, { name: 'Magneti', nameEn: 'Magnets' }, { name: 'Podmetači', nameEn: 'Coasters' },
+    ] },
+    { name: 'Vinski setovi', nameEn: 'Wine sets' },
+    { name: 'Sport i zabava', nameEn: 'Sport and leisure' },
+    { name: 'Lepota', nameEn: 'Beauty' },
+    { name: 'Zdravlje i zaštita', nameEn: 'Health and personal protection' },
+    { name: 'Upaljači', nameEn: 'Lighters', children: [
+      { name: 'Plastični upaljači', nameEn: 'Plastic lighters' }, { name: 'Metalni upaljači', nameEn: 'Metal lighters' }, { name: 'Oprema za cigare', nameEn: 'Cigar accessories' },
+    ] },
   ] },
-  { name: 'Olovke', children: [{ name: 'Plastične olovke' }, { name: 'Metalne olovke' }, { name: 'Setovi olovaka' }, { name: 'Drvene olovke' }] },
-  { name: 'Privesci & Alati', children: [
-    { name: 'Privesci', children: [{ name: 'Metalni privesci' }, { name: 'Plastični privesci' }, { name: 'Drveni privesci' }, { name: 'Ostali privesci' }] },
-    { name: 'Alati', children: [{ name: 'Ručni alat' }, { name: 'Izviđačka oprema' }, { name: 'Lampe' }, { name: 'Merni pribor' }, { name: 'Auto oprema' }] },
+  { name: 'Tehnologija', nameEn: 'Technology', children: [
+    { name: 'Pomoćne baterije', nameEn: 'Power banks' },
+    { name: 'Audio uređaji', nameEn: 'Audio devices', children: [
+      { name: 'Zvučnici', nameEn: 'Speakers' }, { name: 'Slušalice', nameEn: 'Headphones' }, { name: 'Slušalice bubice', nameEn: 'Earbuds' },
+    ] },
+    { name: 'Auto oprema', nameEn: 'Car accessories' },
+    { name: 'Gedžeti', nameEn: 'Gadgets' },
+    { name: 'USB', nameEn: 'USB', children: [{ name: 'USB', nameEn: 'USB drives' }, { name: 'SSD', nameEn: 'SSD' }] },
+    { name: 'Bežični punjači', nameEn: 'Wireless chargers' },
+    { name: 'USB kablovi', nameEn: 'USB cables' },
+    { name: 'Pametni satovi', nameEn: 'Smart watches' },
+    { name: 'Tech portfolio', nameEn: 'Tech portfolio' },
+    { name: 'Kompjuterska oprema', nameEn: 'Computer accessories' },
   ] },
-  { name: 'Torbe & Putovanje', children: [
-    { name: 'Rančevi', children: [{ name: 'Sportski rančevi' }, { name: 'Poslovni rančevi' }] },
-    { name: 'Torbe', children: [{ name: 'Konferencijske torbe' }, { name: 'Sportske i putne torbe' }, { name: 'Frižider torbe' }] },
-    { name: 'Putni program' },
-    { name: 'Kese', children: [{ name: 'PP kese' }, { name: 'Papirne kese' }, { name: 'Pamučne kese' }, { name: 'Juta kese' }] },
-    { name: 'Kišobrani', children: [{ name: 'Kišobrani' }, { name: 'Sklopivi kišobrani' }] },
+  { name: 'Kancelarija', nameEn: 'Office', children: [
+    { name: 'Notesi i agende', nameEn: 'Notebooks & planners', children: [
+      { name: 'Notesi', nameEn: 'Notebooks' }, { name: 'Agende', nameEn: 'Planners' }, { name: 'Portfolio', nameEn: 'Portfolios' },
+    ] },
+    { name: 'Kancelarija', nameEn: 'Office supplies', children: [
+      { name: 'Setovi za beleške', nameEn: 'Notepad sets' }, { name: 'Vizitari', nameEn: 'Business card holders' }, { name: 'Kancelarijski pribor', nameEn: 'Office supplies' },
+      { name: 'Školski pribor', nameEn: 'School supplies' }, { name: 'Držači za ID kartice', nameEn: 'ID card holders' }, { name: 'Stone lampe', nameEn: 'Desk lamps' },
+    ] },
+    { name: 'Satovi', nameEn: 'Watches' },
+    { name: 'Promo pultovi i panoi', nameEn: 'Promo counters & panels' },
+    { name: 'Poklon kutije', nameEn: 'Gift boxes' },
   ] },
-  { name: 'Tekstil', children: [
-    { name: 'Majice', children: [{ name: 'Unisex majice' }, { name: 'Ženske majice' }, { name: 'Dečije majice' }, { name: 'Sportske majice' }] },
-    { name: 'Polo majice', children: [{ name: 'Unisex polo majice' }, { name: 'Ženske polo majice' }] },
-    { name: 'Sportska oprema', children: [{ name: 'Duksarice' }, { name: 'Donji deo trenerki' }, { name: 'Šorcevi' }] },
-    { name: 'Prsluci', children: [{ name: 'Radni prsluci' }, { name: 'Štepani prsluci' }, { name: 'Softshell prsluci' }] },
-    { name: 'Jakne', children: [{ name: 'Zimske jakne i vetrovke' }, { name: 'Softshell jakne' }] },
-    { name: 'Poslovna oprema', children: [{ name: 'Košulje' }, { name: 'Pantalone' }, { name: 'Kecelje i oprema' }, { name: 'Modni dodaci' }] },
-    { name: 'Peškiri' },
-    { name: 'Kape', children: [{ name: 'Kačketi' }, { name: 'Šeširi' }, { name: 'Zimski program' }] },
+  { name: 'Olovke', nameEn: 'Pens', children: [
+    { name: 'Plastične olovke', nameEn: 'Plastic pens' }, { name: 'Metalne olovke', nameEn: 'Metal pens' }, { name: 'Setovi olovaka', nameEn: 'Pen sets' }, { name: 'Drvene olovke', nameEn: 'Wooden pens' },
   ] },
-  { name: 'Radna oprema', children: [
-    { name: 'Radna odeća', children: [{ name: 'Radne pantalone' }, { name: 'Radne jakne' }, { name: 'Radne bermude' }, { name: 'Radni prsluci' }] },
-    { name: 'Zaštitna obuća', children: [{ name: 'Sigurnosna obuća' }, { name: 'Radna obuća' }] },
-    { name: 'Sigurnosna odeća' },
-    { name: 'Dodatna radna oprema' },
+  { name: 'Privesci & Alati', nameEn: 'Key holders & Tools', children: [
+    { name: 'Privesci', nameEn: 'Key holders', children: [
+      { name: 'Metalni privesci', nameEn: 'Metal key holders' }, { name: 'Plastični privesci', nameEn: 'Plastic key holders' }, { name: 'Drveni privesci', nameEn: 'Wooden key holders' }, { name: 'Ostali privesci', nameEn: 'Other key holders' },
+    ] },
+    { name: 'Alati', nameEn: 'Tools', children: [
+      { name: 'Ručni alat', nameEn: 'Hand tools' }, { name: 'Izviđačka oprema', nameEn: 'Outdoor gear' }, { name: 'Lampe', nameEn: 'Flashlights' }, { name: 'Merni pribor', nameEn: 'Measuring tools' }, { name: 'Auto oprema', nameEn: 'Car accessories' },
+    ] },
+  ] },
+  { name: 'Torbe & Putovanje', nameEn: 'Bags & Travel', children: [
+    { name: 'Rančevi', nameEn: 'Backpacks', children: [{ name: 'Sportski rančevi', nameEn: 'Sport backpacks' }, { name: 'Poslovni rančevi', nameEn: 'Business backpacks' }] },
+    { name: 'Torbe', nameEn: 'Bags', children: [
+      { name: 'Konferencijske torbe', nameEn: 'Conference bags' }, { name: 'Sportske i putne torbe', nameEn: 'Sport & travel bags' }, { name: 'Frižider torbe', nameEn: 'Cooler bags' },
+    ] },
+    { name: 'Putni program', nameEn: 'Travel accessories' },
+    { name: 'Kese', nameEn: 'Tote bags', children: [
+      { name: 'PP kese', nameEn: 'PP bags' }, { name: 'Papirne kese', nameEn: 'Paper bags' }, { name: 'Pamučne kese', nameEn: 'Cotton bags' }, { name: 'Juta kese', nameEn: 'Jute bags' },
+    ] },
+    { name: 'Kišobrani', nameEn: 'Umbrellas', children: [{ name: 'Kišobrani', nameEn: 'Standard umbrellas' }, { name: 'Sklopivi kišobrani', nameEn: 'Folding umbrellas' }] },
+  ] },
+  { name: 'Tekstil', nameEn: 'Textile', children: [
+    { name: 'Majice', nameEn: 'T-shirts', children: [
+      { name: 'Unisex majice', nameEn: 'Unisex t-shirts' }, { name: 'Ženske majice', nameEn: "Women's t-shirts" }, { name: 'Dečije majice', nameEn: "Kids' t-shirts" }, { name: 'Sportske majice', nameEn: 'Sport t-shirts' },
+    ] },
+    { name: 'Polo majice', nameEn: 'Polo shirts', children: [{ name: 'Unisex polo majice', nameEn: 'Unisex polo shirts' }, { name: 'Ženske polo majice', nameEn: "Women's polo shirts" }] },
+    { name: 'Sportska oprema', nameEn: 'Sportswear', children: [{ name: 'Duksarice', nameEn: 'Hoodies' }, { name: 'Donji deo trenerki', nameEn: 'Sweatpants' }, { name: 'Šorcevi', nameEn: 'Shorts' }] },
+    { name: 'Prsluci', nameEn: 'Vests', children: [{ name: 'Radni prsluci', nameEn: 'Work vests' }, { name: 'Štepani prsluci', nameEn: 'Quilted vests' }, { name: 'Softshell prsluci', nameEn: 'Softshell vests' }] },
+    { name: 'Jakne', nameEn: 'Jackets', children: [{ name: 'Zimske jakne i vetrovke', nameEn: 'Winter jackets & windbreakers' }, { name: 'Softshell jakne', nameEn: 'Softshell jackets' }] },
+    { name: 'Poslovna oprema', nameEn: 'Business wear', children: [
+      { name: 'Košulje', nameEn: 'Shirts' }, { name: 'Pantalone', nameEn: 'Trousers' }, { name: 'Kecelje i oprema', nameEn: 'Aprons & accessories' }, { name: 'Modni dodaci', nameEn: 'Fashion accessories' },
+    ] },
+    { name: 'Peškiri', nameEn: 'Towels' },
+    { name: 'Kape', nameEn: 'Headwear', children: [{ name: 'Kačketi', nameEn: 'Caps' }, { name: 'Šeširi', nameEn: 'Hats' }, { name: 'Zimski program', nameEn: 'Winter headwear' }] },
+  ] },
+  { name: 'Radna oprema', nameEn: 'Workwear', children: [
+    { name: 'Radna odeća', nameEn: 'Work clothing', children: [
+      { name: 'Radne pantalone', nameEn: 'Work trousers' }, { name: 'Radne jakne', nameEn: 'Work jackets' }, { name: 'Radne bermude', nameEn: 'Work shorts' }, { name: 'Radni prsluci', nameEn: 'Work vests' },
+    ] },
+    { name: 'Zaštitna obuća', nameEn: 'Protective footwear', children: [{ name: 'Sigurnosna obuća', nameEn: 'Safety footwear' }, { name: 'Radna obuća', nameEn: 'Work footwear' }] },
+    { name: 'Sigurnosna odeća', nameEn: 'Safety clothing' },
+    { name: 'Dodatna radna oprema', nameEn: 'Additional workwear' },
   ] },
 ];
 
@@ -93,7 +119,7 @@ function buildIndex() {
       const slug = slugify(node.name);
       const path = [...parentPath, slug];
       const children = node.children ? visit(node.children, path) : undefined;
-      const built = { id: path.join('/'), name: node.name, path, children };
+      const built = { id: path.join('/'), name: node.name, nameEn: node.nameEn, path, children };
       byPath.set(built.id, built);
       return built;
     });

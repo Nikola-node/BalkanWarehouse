@@ -4,6 +4,7 @@ import ProductGrid from './components/ProductGrid'
 import ProductDetail from './components/ProductDetail'
 import Cart from './components/Cart'
 import CategoryMenu from './components/CategoryMenu'
+import LanguageSwitcher from './components/LanguageSwitcher'
 import { useCart } from './CartContext'
 import { t } from './i18n'
 import './App.css'
@@ -25,20 +26,22 @@ function CartIcon() {
 
   return (
     <Link to="/cart" className={`site-cart ${pulse ? 'site-cart-pulse' : ''}`}>
-      <svg
-        width="22"
-        height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6 8h12l-1 12a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8z" />
-        <path d="M9 8V6a3 3 0 0 1 6 0v2" />
-      </svg>
-      <span className="site-cart-count">{count}</span>
+      <span className="site-cart-icon-wrap">
+        <svg
+          width="26"
+          height="26"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5.5 8.5h13l-1.1 10.2a1.8 1.8 0 0 1-1.8 1.6H8.4a1.8 1.8 0 0 1-1.8-1.6L5.5 8.5z" />
+          <path d="M8.5 8.5V6.8a3.5 3.5 0 0 1 7 0v1.7" />
+        </svg>
+        <span className="site-cart-count">{count}</span>
+      </span>
     </Link>
   )
 }
@@ -79,7 +82,10 @@ function App() {
           WebShop
         </Link>
         <SearchBar />
-        <CartIcon />
+        <div className="site-header-actions">
+          <CartIcon />
+          <LanguageSwitcher />
+        </div>
       </header>
 
       <nav className="site-nav-bar">

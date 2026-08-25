@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { getGroupedProducts, getCategoryTree, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getTechniqueFacets, getCategoryTree, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails } from './email.js';
@@ -17,14 +17,24 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/categories', (req, res) => {
-  res.json(getCategoryTree());
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const localize = (nodes) =>
+    nodes.map((n) => ({ ...n, name: lang === 'en' ? n.nameEn : n.name, children: n.children && localize(n.children) }));
+  res.json(localize(getCategoryTree()));
 });
 
 app.get('/api/products', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
   const nodeId = req.query.nodeId || undefined;
   const q = req.query.q || undefined;
+  const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined;
+  const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined;
+  const inStock = req.query.inStock === '1';
+  const technique = req.query.technique ? req.query.technique.split(',').filter(Boolean) : undefined;
+  const sort = req.query.sort || undefined;
 
-  const all = getGroupedProducts({ nodeId, q });
+  const all = getGroupedProducts({ lang, nodeId, q, minPrice, maxPrice, inStock, technique, sort });
+  const techniqueFacets = getTechniqueFacets({ lang, nodeId, q, minPrice, maxPrice, inStock });
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 24);
@@ -37,7 +47,7 @@ app.get('/api/products', (req, res) => {
     filter = { type: 'search', query: q };
   } else if (nodeId) {
     const node = getNode(nodeId);
-    filter = node ? { type: 'category', name: node.name } : null;
+    filter = node ? { type: 'category', name: lang === 'en' ? node.nameEn : node.name } : null;
   }
 
   res.json({
@@ -47,6 +57,7 @@ app.get('/api/products', (req, res) => {
     limit,
     totalPages: Math.ceil(all.length / limit),
     filter,
+    techniqueFacets,
   });
 });
 
@@ -56,32 +67,40 @@ app.get('/api/products', (req, res) => {
 // Width/Height/Depth are deliberately left out: those are the outer
 // carton's dimensions, not the individual item's, and would be misleading
 // labeled as a product spec.
-function buildSpecifications(detail) {
+const SPEC_LABELS = {
+  sr: { model: 'Model', sku: 'Šifra', ean: 'EAN', brand: 'Brend', category: 'Kategorija', color: 'Boja', weight: 'Težina', package: 'Pakovanje', carton: 'Karton', origin: 'Poreklo' },
+  en: { model: 'Model', sku: 'Code', ean: 'EAN', brand: 'Brand', category: 'Category', color: 'Color', weight: 'Weight', package: 'Packing', carton: 'Carton', origin: 'Origin' },
+};
+
+function buildSpecifications(detail, lang) {
+  const labels = SPEC_LABELS[lang];
   const extra = [];
 
-  if (detail.ProductIdView) extra.push({ Id: 'sku', Name: 'Šifra', Value: detail.ProductIdView });
-  if (detail.EAN) extra.push({ Id: 'ean', Name: 'EAN', Value: detail.EAN });
-  if (detail.Brand?.Id) extra.push({ Id: 'brand', Name: 'Brend', Value: detail.Brand.Id });
+  if (detail.ProductIdView) extra.push({ Id: 'sku', Name: labels.sku, Value: detail.ProductIdView });
+  if (detail.Model?.Name) extra.push({ Id: 'model', Name: labels.model, Value: detail.Model.Name });
+  if (detail.EAN) extra.push({ Id: 'ean', Name: labels.ean, Value: detail.EAN });
+  if (detail.Brand?.Id) extra.push({ Id: 'brand', Name: labels.brand, Value: detail.Brand.Id });
   if (detail.Category?.Name) {
     const category = detail.SubCategory?.Name
       ? `${detail.Category.Name} / ${detail.SubCategory.Name}`
       : detail.Category.Name;
-    extra.push({ Id: 'category', Name: 'Kategorija', Value: category });
+    extra.push({ Id: 'category', Name: labels.category, Value: category });
   }
-  if (detail.Color?.Name) extra.push({ Id: 'color', Name: 'Boja', Value: detail.Color.Name });
-  if (detail.Weight) extra.push({ Id: 'weight', Name: 'Težina', Value: `${detail.Weight} ${detail.WeightUM || ''}`.trim() });
-  if (detail.PackageInfo) extra.push({ Id: 'package', Name: 'Pakovanje', Value: detail.PackageInfo });
-  if (detail.Carton) extra.push({ Id: 'carton', Name: 'Karton', Value: `${detail.Carton} ${detail.UM || ''}`.trim() });
-  if (detail.OriginName?.trim()) extra.push({ Id: 'origin', Name: 'Poreklo', Value: detail.OriginName });
+  if (detail.Color?.Name) extra.push({ Id: 'color', Name: labels.color, Value: detail.Color.Name });
+  if (detail.Weight) extra.push({ Id: 'weight', Name: labels.weight, Value: `${detail.Weight} ${detail.WeightUM || ''}`.trim() });
+  if (detail.PackageInfo) extra.push({ Id: 'package', Name: labels.package, Value: detail.PackageInfo });
+  if (detail.Carton) extra.push({ Id: 'carton', Name: labels.carton, Value: `${detail.Carton} ${detail.UM || ''}`.trim() });
+  if (detail.OriginName?.trim()) extra.push({ Id: 'origin', Name: labels.origin, Value: detail.OriginName });
 
   return [...extra, ...(detail.Specifications || [])];
 }
 
 app.get('/api/products/:id', async (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
   try {
-    const detail = applyMarkup(await getProductDetail(req.params.id));
-    const variants = getSiblings(req.params.id).map((p) => {
-      const colorInfo = getColorInfo(p.Color);
+    const detail = applyMarkup(await getProductDetail(req.params.id, lang));
+    const variants = getSiblings(req.params.id, lang).map((p) => {
+      const colorInfo = getColorInfo(p.Color, lang);
       return {
         id: p.Id,
         size: p.Size,
@@ -91,7 +110,7 @@ app.get('/api/products/:id', async (req, res) => {
         price: p.Price,
       };
     });
-    res.json({ ...detail, variants, Specifications: buildSpecifications(detail) });
+    res.json({ ...detail, variants, Specifications: buildSpecifications(detail, lang) });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'Could not reach Promobox' });

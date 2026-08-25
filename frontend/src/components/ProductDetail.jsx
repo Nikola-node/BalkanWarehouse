@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { BACKEND_URL } from '../config'
-import { t } from '../i18n'
+import { t, getLang } from '../i18n'
 import { useCart } from '../CartContext'
 import { canFormQuantity } from '../packageQuantity'
 import { swatchColor } from '../colorSwatch'
@@ -22,7 +22,7 @@ function ProductDetail() {
     setLoading(true)
     setActiveImage(0)
     setSpecsOpen(true)
-    fetch(`${BACKEND_URL}/api/products/${id}`)
+    fetch(`${BACKEND_URL}/api/products/${id}?lang=${getLang()}`)
       .then((res) => res.json())
       .then((data) => {
         setProduct(data)
@@ -62,8 +62,8 @@ function ProductDetail() {
         icon: 'error',
         text:
           packageSizes.length > 0
-            ? `Nevažeća količina. Proizvod se naručuje u pakovanjima od: ${packageSizes.join(', ')} komada.`
-            : 'Nevažeća količina.',
+            ? `${t('invalidQuantityPrefix')} ${packageSizes.join(', ')} ${t('pieces')}`
+            : t('invalidQuantity'),
         confirmButtonText: 'OK',
         confirmButtonColor: '#111111',
       })

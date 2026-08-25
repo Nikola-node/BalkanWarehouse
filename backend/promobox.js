@@ -1,5 +1,5 @@
 const ROOT = 'https://apiv1.promosolution.services';
-const CULTURE = 'sr-Latin-CS';
+const CULTURES = { sr: 'sr-Latin-CS', en: 'en' };
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
@@ -32,10 +32,10 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-export async function getAllProducts() {
+export async function getAllProducts(lang = 'sr') {
   const token = await getAccessToken();
 
-  const res = await fetch(`${ROOT}/${CULTURE}/api/Product`, {
+  const res = await fetch(`${ROOT}/${CULTURES[lang]}/api/Product`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -48,10 +48,10 @@ export async function getAllProducts() {
 
 // One entry per Model (matches product.Model 1:1), carries the model's
 // representative image - the /api/Product list itself has no image field.
-export async function getModels() {
+export async function getModels(lang = 'sr') {
   const token = await getAccessToken();
 
-  const res = await fetch(`${ROOT}/${CULTURE}/api/Model`, {
+  const res = await fetch(`${ROOT}/${CULTURES[lang]}/api/Model`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -64,10 +64,12 @@ export async function getModels() {
 
 // Bulk stock levels for every SKU across all warehouses - the product list
 // and model list endpoints carry neither.
+// Stock quantities are plain numbers with no language-dependent text, so
+// this is fetched once and shared across both languages.
 export async function getProductStock() {
   const token = await getAccessToken();
 
-  const res = await fetch(`${ROOT}/${CULTURE}/api/ProductStock`, {
+  const res = await fetch(`${ROOT}/${CULTURES.sr}/api/ProductStock`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -78,10 +80,10 @@ export async function getProductStock() {
   return res.json();
 }
 
-export async function getColors() {
+export async function getColors(lang = 'sr') {
   const token = await getAccessToken();
 
-  const res = await fetch(`${ROOT}/${CULTURE}/api/Color`, {
+  const res = await fetch(`${ROOT}/${CULTURES[lang]}/api/Color`, {
     headers: { Authorization: `Bearer ${token}` },
   });
 
@@ -92,12 +94,12 @@ export async function getColors() {
   return res.json();
 }
 
-export async function getProductDetail(id) {
+export async function getProductDetail(id, lang = 'sr') {
   const token = await getAccessToken();
 
   // A handful of ids contain a literal "/" (e.g. size "L/XL"), which breaks
   // the /api/Product/{id} path form, so id is passed as a query param instead.
-  const url = new URL(`${ROOT}/${CULTURE}/api/Product/`);
+  const url = new URL(`${ROOT}/${CULTURES[lang]}/api/Product/`);
   url.searchParams.set('id', id);
 
   const res = await fetch(url, {

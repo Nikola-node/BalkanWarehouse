@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
-import { t } from '../i18n'
+import { t, getLang } from '../i18n'
 
 function CategoryLevel({ nodes, onSelect, nested }) {
   const [activeId, setActiveId] = useState(null)
@@ -39,7 +39,7 @@ function CategoryMenu() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/categories`)
+    fetch(`${BACKEND_URL}/api/categories?lang=${getLang()}`)
       .then((res) => res.json())
       .then(setCategories)
   }, [])
