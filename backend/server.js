@@ -13,7 +13,7 @@ import { checkPassword, createSession, destroySession, requireAdmin } from './ad
 import { getAds, addAd, removeAd, AD_IMAGES_DIR } from './ads.js';
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 // Locked to the site's own frontend rather than left open to any origin -
 // set FRONTEND_ORIGIN in production to the real deployed domain.
