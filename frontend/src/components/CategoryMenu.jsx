@@ -45,7 +45,7 @@ function CategoryMenu() {
   }, [])
 
   function goToNode(nodeId) {
-    navigate(`/?nodeId=${encodeURIComponent(nodeId)}`)
+    navigate(`/proizvodi?nodeId=${encodeURIComponent(nodeId)}`)
     setOpen(false)
   }
 

@@ -1,19 +1,122 @@
 import 'dotenv/config';
+import crypto from 'crypto';
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
-import { getGroupedProducts, getTechniqueFacets, getCategoryTree, getSiblings, getColorInfo, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import multer from 'multer';
+import { getGroupedProducts, getCategoryTree, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails } from './email.js';
+import { getSettings, updateSettings } from './settings.js';
+import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
+import { getAds, addAd, removeAd, AD_IMAGES_DIR } from './ads.js';
 
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+// Locked to the site's own frontend rather than left open to any origin -
+// set FRONTEND_ORIGIN in production to the real deployed domain.
+app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173' }));
 app.use(express.json());
+app.use('/uploads/ads', express.static(AD_IMAGES_DIR));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Public - the frontend fetches this once to convert every displayed EUR
+// price into RSD, so it needs to be readable without logging in.
+app.get('/api/settings', (req, res) => {
+  const { eurToRsdRate } = getSettings();
+  res.json({ eurToRsdRate });
+});
+
+app.post('/api/admin/login', async (req, res) => {
+  const { password, recaptchaToken } = req.body || {};
+
+  const humanVerified = await verifyRecaptcha(recaptchaToken);
+  if (!humanVerified) {
+    return res.status(400).json({ error: 'Captcha verification failed' });
+  }
+
+  if (!checkPassword(password)) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+  res.json({ token: createSession() });
+});
+
+app.post('/api/admin/logout', requireAdmin, (req, res) => {
+  const token = req.headers.authorization.slice(7);
+  destroySession(token);
+  res.json({ ok: true });
+});
+
+app.get('/api/admin/settings', requireAdmin, (req, res) => {
+  res.json(getSettings());
+});
+
+app.put('/api/admin/settings', requireAdmin, (req, res) => {
+  const rate = Number(req.body?.eurToRsdRate);
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return res.status(400).json({ error: 'Invalid exchange rate' });
+  }
+  res.json(updateSettings({ eurToRsdRate: rate }));
+});
+
+// The extension a saved ad image gets is picked from this map, never taken
+// from the uploaded file's own name - an uploaded file renamed to end in
+// .html (with a spoofed image/* content-type) would otherwise be served
+// back by express.static with an HTML content-type, which is a real XSS risk.
+const AD_IMAGE_EXT_BY_MIME = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
+const adUpload = multer({
+  storage: multer.diskStorage({
+    destination: AD_IMAGES_DIR,
+    filename: (req, file, cb) => {
+      cb(null, `${crypto.randomUUID()}${AD_IMAGE_EXT_BY_MIME[file.mimetype]}`);
+    },
+  }),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!AD_IMAGE_EXT_BY_MIME[file.mimetype]) {
+      return cb(new Error('Unsupported image type'));
+    }
+    cb(null, true);
+  },
+});
+
+function adsResponse() {
+  return { items: getAds().map((ad) => ({ id: ad.filename, url: `/uploads/ads/${ad.filename}` })) };
+}
+
+// Public - the homepage banner carousel reads whatever ads are currently
+// live, no login needed to just view the site.
+app.get('/api/ads', (req, res) => {
+  res.json(adsResponse());
+});
+
+app.post('/api/admin/ads', requireAdmin, (req, res) => {
+  adUpload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+    addAd(req.file.filename);
+    res.json(adsResponse());
+  });
+});
+
+app.delete('/api/admin/ads/:id', requireAdmin, (req, res) => {
+  removeAd(req.params.id);
+  res.json(adsResponse());
 });
 
 app.get('/api/categories', (req, res) => {
@@ -23,6 +126,18 @@ app.get('/api/categories', (req, res) => {
   res.json(localize(getCategoryTree()));
 });
 
+app.get('/api/products/featured', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const limit = Math.min(50, parseInt(req.query.limit, 10) || 16);
+  res.json({ items: getDiverseNewest({ lang, limit }) });
+});
+
+app.get('/api/products/suggest', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const limit = Math.min(10, parseInt(req.query.limit, 10) || 6);
+  res.json({ items: getSuggestions({ lang, q: req.query.q, limit }) });
+});
+
 app.get('/api/products', (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';
   const nodeId = req.query.nodeId || undefined;
@@ -30,11 +145,9 @@ app.get('/api/products', (req, res) => {
   const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined;
   const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined;
   const inStock = req.query.inStock === '1';
-  const technique = req.query.technique ? req.query.technique.split(',').filter(Boolean) : undefined;
   const sort = req.query.sort || undefined;
 
-  const all = getGroupedProducts({ lang, nodeId, q, minPrice, maxPrice, inStock, technique, sort });
-  const techniqueFacets = getTechniqueFacets({ lang, nodeId, q, minPrice, maxPrice, inStock });
+  const all = getGroupedProducts({ lang, nodeId, q, minPrice, maxPrice, inStock, sort });
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 24);
@@ -57,7 +170,6 @@ app.get('/api/products', (req, res) => {
     limit,
     totalPages: Math.ceil(all.length / limit),
     filter,
-    techniqueFacets,
   });
 });
 
@@ -95,26 +207,71 @@ function buildSpecifications(detail, lang) {
   return [...extra, ...(detail.Specifications || [])];
 }
 
+// A handful of products (mostly gadgety ones like TESLA's levitating lamp)
+// carry a "Video" entry in Promobox's own Specifications array whose Value
+// isn't spec text at all - it's a raw Vimeo embed snippet (an <iframe> plus
+// a <script> tag), which would show up as a garbled wall of markup if
+// rendered as plain text like every other spec. Detecting it by content
+// (any spec value containing an <iframe) rather than by its Id/Name label
+// catches this regardless of language, since Promobox doesn't translate the
+// label consistently. Only the iframe's `src` is pulled out and returned as
+// a plain URL - the surrounding markup (including that <script> tag) is
+// dropped, so the frontend only ever has to render a normal <iframe>
+// element, never untrusted raw HTML.
+function extractVideo(specifications) {
+  const videoSpec = specifications.find((s) => /<iframe/i.test(s.Value || ''));
+  if (!videoSpec) return { specifications, videoUrl: null, videoAspectPercent: null };
+
+  // The src attribute's `&` are HTML-entity-encoded (as `&amp;`) in the raw
+  // markup - decoding them back is needed since this URL is handed to the
+  // frontend as a plain string to set directly as a real src, not parsed
+  // from HTML where the browser would decode entities on its own.
+  const srcMatch = videoSpec.Value.match(/src="([^"]+)"/i);
+  const videoUrl = srcMatch ? srcMatch[1].replace(/&amp;/g, '&') : null;
+  // The wrapper div's own `padding:<N>%` is a height/width ratio (the
+  // classic CSS aspect-ratio-box trick) - reused here instead of assuming
+  // a 16:9 widescreen video, since these product demo clips are often
+  // vertical/portrait (this one is 177.78%, i.e. 9:16).
+  const paddingMatch = videoSpec.Value.match(/padding:\s*([\d.]+)%/i);
+  return {
+    specifications: specifications.filter((s) => s !== videoSpec),
+    videoUrl,
+    videoAspectPercent: paddingMatch ? parseFloat(paddingMatch[1]) : null,
+  };
+}
+
 app.get('/api/products/:id', async (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';
   try {
     const detail = applyMarkup(await getProductDetail(req.params.id, lang));
+    // Grouped by Shade rather than the broader Color field - several distinct
+    // shades (e.g. "Plava" and "Rojal plava") can share one Color code, which
+    // would otherwise merge visually different variants into a single swatch.
     const variants = getSiblings(req.params.id, lang).map((p) => {
-      const colorInfo = getColorInfo(p.Color, lang);
+      const shadeInfo = getShadeInfo(p.Shade, lang);
       return {
         id: p.Id,
+        code: p.ProductIdView,
         size: p.Size,
-        color: p.Color,
-        colorName: colorInfo?.Name || p.Color,
-        htmlColor: colorInfo?.HtmlColor || '',
+        color: p.Shade,
+        colorName: shadeInfo?.Name || p.Color,
+        htmlColor: shadeInfo?.HtmlColor || '',
         price: p.Price,
+        stockQty: getStockQty(p.Id),
       };
     });
-    res.json({ ...detail, variants, Specifications: buildSpecifications(detail, lang) });
+    const { specifications, videoUrl, videoAspectPercent } = extractVideo(buildSpecifications(detail, lang));
+    res.json({ ...detail, variants, Specifications: specifications, videoUrl, videoAspectPercent });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: 'Could not reach Promobox' });
   }
+});
+
+app.get('/api/products/:id/similar', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const limit = Math.min(20, parseInt(req.query.limit, 10) || 8);
+  res.json({ items: getSimilarProducts({ id: req.params.id, lang, limit }) });
 });
 
 // Verifies the reCAPTCHA token with Google before trusting an order came
@@ -137,24 +294,51 @@ async function verifyRecaptcha(token) {
 }
 
 app.post('/api/orders', async (req, res) => {
-  const { items, customer, paymentMethod, total, recaptchaToken } = req.body || {};
+  const { items, customer, paymentMethod, recaptchaToken, lang } = req.body || {};
 
   const humanVerified = await verifyRecaptcha(recaptchaToken);
   if (!humanVerified) {
     return res.status(400).json({ error: 'Captcha verification failed' });
   }
 
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'No items in order' });
+  }
+
+  // Price and total are never trusted from the client - each item's price
+  // is looked up fresh from the same product cache every page on the site
+  // reads from, and the total is computed from that. Without this, a
+  // tampered request could set any price it wants.
+  const catalog = new Map(getProducts('sr').map((p) => [p.Id, p.Price]));
+  const verifiedItems = [];
+  for (const item of items) {
+    const realPrice = catalog.get(item?.id);
+    const quantity = Number(item?.quantity);
+    if (realPrice === undefined || !Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: 'Invalid item in order' });
+    }
+    verifiedItems.push({ ...item, price: realPrice, quantity });
+  }
+  const total = verifiedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
   const order = {
     orderNumber: generateOrderNumber(),
     createdAt: new Date(),
-    items,
+    items: verifiedItems,
     customer,
     paymentMethod,
     total,
+    // The customer's own confirmation email is sent in whatever language
+    // their site was in - the shop's own notification copy always goes out
+    // in Serbian regardless, since that's who's actually reading it.
+    customerLang: lang === 'en' ? 'en' : 'sr',
   };
 
   console.log('New order received:', JSON.stringify(order, null, 2));
-  await sendOrderEmails(order);
+  // Cart prices are kept in EUR end to end (the site's source of truth,
+  // straight from Promobox) - the order email converts to RSD for display
+  // using whatever rate is current right now, same as the site itself.
+  await sendOrderEmails({ ...order, eurToRsdRate: getSettings().eurToRsdRate });
 
   res.json({ ok: true, orderNumber: order.orderNumber });
 });

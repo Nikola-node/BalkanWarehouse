@@ -94,6 +94,24 @@ export async function getColors(lang = 'sr') {
   return res.json();
 }
 
+// Shade is the specific per-variant color (e.g. "Rojal plava"), unlike the
+// broader Color field a product row carries - several distinct shades can
+// share one Color code (both "Plava" and "Rojal plava" are Color "B - PL"),
+// so Shade is what's needed to tell a model's individual color variants apart.
+export async function getShades(lang = 'sr') {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${ROOT}/${CULTURES[lang]}/api/Shade`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Promobox shade fetch failed: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export async function getProductDetail(id, lang = 'sr') {
   const token = await getAccessToken();
 

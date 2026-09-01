@@ -1,37 +1,38 @@
 import { useEffect, useState } from 'react'
 import { t } from '../i18n'
+import { useCurrency } from '../CurrencyContext'
 import CategoryFilterTree from './CategoryFilterTree'
 
-function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, technique, techniqueFacets, onChange }) {
-  const [minInput, setMinInput] = useState(minPrice)
-  const [maxInput, setMaxInput] = useState(maxPrice)
-  const [printOpen, setPrintOpen] = useState(true)
+// minPrice/maxPrice arrive from (and are sent back to) the URL/backend in
+// EUR - Promobox prices are compared in EUR - but the customer should only
+// ever see and type RSD, so every value crossing that boundary gets
+// converted right here rather than the backend needing to know about RSD.
+function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, onChange }) {
+  const { eurFromRsd, rsdFromEur } = useCurrency()
+  const [minInput, setMinInput] = useState(minPrice ? Math.round(rsdFromEur(minPrice)) : minPrice)
+  const [maxInput, setMaxInput] = useState(maxPrice ? Math.round(rsdFromEur(maxPrice)) : maxPrice)
 
-  const activeFilterCount =
-    (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0) + (technique.length > 0 ? 1 : 0)
+  const activeFilterCount = (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0)
 
   function resetAll() {
-    onChange({ nodeId: '', minPrice: '', maxPrice: '', inStock: false, technique: '' })
+    onChange({ nodeId: '', minPrice: '', maxPrice: '', inStock: false })
   }
 
   useEffect(() => {
-    setMinInput(minPrice)
-    setMaxInput(maxPrice)
+    setMinInput(minPrice ? Math.round(rsdFromEur(minPrice)) : minPrice)
+    setMaxInput(maxPrice ? Math.round(rsdFromEur(maxPrice)) : maxPrice)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minPrice, maxPrice])
 
   function applyPriceRange() {
-    onChange({ minPrice: minInput, maxPrice: maxInput })
+    onChange({
+      minPrice: minInput ? Math.round(eurFromRsd(minInput) * 100) / 100 : '',
+      maxPrice: maxInput ? Math.round(eurFromRsd(maxInput) * 100) / 100 : '',
+    })
   }
 
   function handlePriceKeyDown(e) {
     if (e.key === 'Enter') applyPriceRange()
-  }
-
-  function toggleTechnique(id) {
-    const selected = new Set(technique)
-    if (selected.has(id)) selected.delete(id)
-    else selected.add(id)
-    onChange({ technique: [...selected].join(',') })
   }
 
   return (
@@ -78,28 +79,6 @@ function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, technique, te
           {t('inStockOnly')}
         </label>
       </div>
-
-      {techniqueFacets.length > 0 && (
-        <div className="filter-sidebar-section">
-          <button type="button" className="filter-sidebar-toggle" onClick={() => setPrintOpen(!printOpen)}>
-            {t('printTechnique')}
-            <span className={`filter-sidebar-caret ${printOpen ? 'open' : ''}`}>⌄</span>
-          </button>
-          {printOpen && (
-            <ul className="filter-sidebar-list">
-              {techniqueFacets.map((f) => (
-                <li key={f.id}>
-                  <label>
-                    <input type="checkbox" checked={technique.includes(f.id)} onChange={() => toggleTechnique(f.id)} />
-                    <span className="filter-sidebar-list-name">{f.name}</span>
-                    <span className="filter-sidebar-count">({f.count})</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
     </aside>
   )
 }

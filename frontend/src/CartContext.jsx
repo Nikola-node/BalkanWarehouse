@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 
 const CartContext = createContext(null)
-const STORAGE_KEY = 'webshop-cart'
+const STORAGE_KEY = 'balkanwarehouse-cart'
 
 function loadCart() {
   try {

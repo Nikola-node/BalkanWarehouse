@@ -1,15 +1,18 @@
 import { Link } from 'react-router-dom'
 import { t } from '../i18n'
 import { swatchColor } from '../colorSwatch'
+import { useCurrency } from '../CurrencyContext'
 
 const VISIBLE_COLORS = 4
 
-function ProductCard({ product }) {
+function ProductCard({ product, isNew }) {
+  const { formatPrice } = useCurrency()
   const extraColors = product.colors.length - VISIBLE_COLORS
 
   return (
     <Link to={`/product/${product.variantIds[0]}`} className="product-card">
       <div className="product-card-image">
+        {isNew && <span className="product-card-badge">NEW</span>}
         {product.image && <img src={product.image} alt={product.name} loading="lazy" />}
         {product.imageHover && (
           <img className="product-card-image-hover" src={product.imageHover} alt="" loading="lazy" />
@@ -47,9 +50,11 @@ function ProductCard({ product }) {
       <div className="product-card-price-row">
         <span className="product-card-price-label">{t('price')}</span>
         <span className="product-card-price">
-          {product.minPrice === product.maxPrice
-            ? `€${product.minPrice.toFixed(2)}`
-            : `€${product.minPrice.toFixed(2)} - €${product.maxPrice.toFixed(2)}`}
+          {product.maxPrice === 0
+            ? t('priceOnRequest')
+            : product.minPrice === product.maxPrice
+              ? formatPrice(product.minPrice)
+              : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`}
         </span>
       </div>
     </Link>

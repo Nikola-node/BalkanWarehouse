@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Route, Routes, useNavigate } from 'react-router-dom'
+import Home from './components/Home'
 import ProductGrid from './components/ProductGrid'
 import ProductDetail from './components/ProductDetail'
 import Cart from './components/Cart'
 import CategoryMenu from './components/CategoryMenu'
 import LanguageSwitcher from './components/LanguageSwitcher'
+import Footer from './components/Footer'
+import LegalPage from './components/LegalPage'
+import Admin from './components/Admin'
 import { useCart } from './CartContext'
-import { t } from './i18n'
+import { useCurrency } from './CurrencyContext'
+import { t, getLang } from './i18n'
+import { BACKEND_URL } from './config'
 import './App.css'
 
 function CartIcon() {
@@ -47,30 +53,121 @@ function CartIcon() {
 }
 
 function SearchBar() {
+  const { formatPrice } = useCurrency()
   const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
   const navigate = useNavigate()
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!trimmed) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      const params = new URLSearchParams({ q: trimmed, lang: getLang() })
+      fetch(`${BACKEND_URL}/api/products/suggest?${params}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setSuggestions(data.items)
+          setOpen(true)
+          setActiveIndex(-1)
+        })
+    }, 250)
+
+    return () => clearTimeout(timeout)
+  }, [query])
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  function goToSuggestion(item) {
+    setOpen(false)
+    setQuery('')
+    navigate(`/product/${item.variantIds[0]}`)
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
     const trimmed = query.trim()
-    if (trimmed) navigate(`/?q=${encodeURIComponent(trimmed)}`)
+    if (!trimmed) return
+    setOpen(false)
+    navigate(`/proizvodi?q=${encodeURIComponent(trimmed)}`)
+  }
+
+  function handleKeyDown(e) {
+    if (!open || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIndex((i) => (i + 1) % suggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIndex((i) => (i - 1 + suggestions.length) % suggestions.length)
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault()
+      goToSuggestion(suggestions[activeIndex])
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+    }
   }
 
   return (
-    <form className="site-search" onSubmit={handleSubmit}>
-      <input
-        type="text"
-        placeholder={t('search')}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <button type="submit" aria-label={t('search')}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="11" cy="11" r="7" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-      </button>
-    </form>
+    <div className="site-search-wrap" ref={wrapRef}>
+      <form className="site-search" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          placeholder={t('search')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setOpen(true)}
+          onKeyDown={handleKeyDown}
+          autoComplete="off"
+        />
+        <button type="submit" aria-label={t('search')}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </button>
+      </form>
+
+      {open && suggestions.length > 0 && (
+        <ul className="site-search-suggestions">
+          {suggestions.map((item, i) => (
+            <li key={item.model}>
+              <button
+                type="button"
+                className={`site-search-suggestion ${i === activeIndex ? 'active' : ''}`}
+                onClick={() => goToSuggestion(item)}
+                onMouseEnter={() => setActiveIndex(i)}
+              >
+                {item.image && <img src={item.image} alt="" />}
+                <span className="site-search-suggestion-info">
+                  <span className="site-search-suggestion-name">{item.name}</span>
+                  <span className="site-search-suggestion-price">
+                    {item.maxPrice === 0
+                      ? t('priceOnRequest')
+                      : item.minPrice === item.maxPrice
+                        ? formatPrice(item.minPrice)
+                        : `${formatPrice(item.minPrice)} - ${formatPrice(item.maxPrice)}`}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -79,7 +176,7 @@ function App() {
     <div>
       <header className="site-header">
         <Link to="/" className="site-logo">
-          WebShop
+          BalkanWarehouse
         </Link>
         <SearchBar />
         <div className="site-header-actions">
@@ -89,16 +186,32 @@ function App() {
       </header>
 
       <nav className="site-nav-bar">
-        <CategoryMenu />
+        <div className="site-nav-bar-inner">
+          <CategoryMenu />
+          <Link to="/o-nama" className="site-nav-link">{t('footerAbout')}</Link>
+          <Link to="/kontakt" className="site-nav-link">{t('navContact')}</Link>
+        </div>
       </nav>
 
       <main className="site-content">
         <Routes>
-          <Route path="/" element={<ProductGrid />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/proizvodi" element={<ProductGrid />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/o-nama" element={<LegalPage titleKey="footerAbout" />} />
+          <Route path="/uslovi-kupovine" element={<LegalPage titleKey="footerTerms" />} />
+          <Route path="/dostava" element={<LegalPage titleKey="footerDelivery" />} />
+          <Route path="/nacin-placanja" element={<LegalPage titleKey="footerPayment" />} />
+          <Route path="/diskriminacija" element={<LegalPage titleKey="footerDiscrimination" />} />
+          <Route path="/politika-privatnosti" element={<LegalPage titleKey="footerPrivacy" />} />
+          <Route path="/povracaj-robe" element={<LegalPage titleKey="footerReturns" />} />
+          <Route path="/kontakt" element={<LegalPage titleKey="navContact" />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </main>
+
+      <Footer />
     </div>
   )
 }

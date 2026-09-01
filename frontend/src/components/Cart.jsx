@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { useCart } from '../CartContext'
+import { useCurrency } from '../CurrencyContext'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
-import { t } from '../i18n'
+import { t, getLang } from '../i18n'
 
 const initialForm = {
   firstName: '',
@@ -28,11 +29,21 @@ function FormField({ label, textarea, ...props }) {
 
 function Cart() {
   const { items, updateQuantity, removeItem, clearCart, total } = useCart()
+  const { formatPrice, formatLineTotal, toRsd, formatRsd } = useCurrency()
+  // Summed from each item's own rounded-to-RSD line total, not from the raw
+  // EUR total - otherwise the displayed grand total can land a few dinars
+  // off from what adding up the displayed line totals gives you.
+  const totalRsd = items.reduce((sum, item) => sum + toRsd(item.price) * item.quantity, 0)
   const [paymentMethod, setPaymentMethod] = useState('card')
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  // Holds the raw typed text while a quantity field is being edited, keyed
+  // by item id - kept separate from the cart's own quantity (a number) for
+  // the same reason as the product page's quantity field: converting on
+  // every keystroke makes a cleared field flash "0" before the next digit.
+  const [quantityDrafts, setQuantityDrafts] = useState({})
 
   const recaptchaRef = useRef(null)
   const widgetId = useRef(null)
@@ -65,7 +76,21 @@ function Cart() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  function handleRemove(id) {
+  // Without this, Enter in a plain text input inside a <form> submits the
+  // form natively - on this page that would place the order. Moving focus
+  // to the next field instead both fixes that and gives the requested
+  // "Enter jumps to the next field" behavior. Scoped to .recipient-card so
+  // it only affects the customer-info fields, not the payment/delivery
+  // radios above them.
+  function handleFieldKeyDown(e) {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const fields = Array.from(e.currentTarget.closest('.recipient-card').querySelectorAll('input, textarea'))
+    const next = fields[fields.indexOf(e.currentTarget) + 1]
+    if (next) next.focus()
+  }
+
+  function confirmRemove(id) {
     Swal.fire({
       icon: 'warning',
       text: t('removeConfirmText'),
@@ -87,6 +112,34 @@ function Cart() {
     })
   }
 
+  // Shared by the stepper's "-" button and the manually-typed quantity
+  // field, so dragging/typing a quantity down to zero asks for confirmation
+  // the same way the × remove button does, instead of silently vanishing.
+  function changeQuantity(id, quantity) {
+    if (quantity <= 0) {
+      confirmRemove(id)
+    } else {
+      updateQuantity(id, quantity)
+    }
+  }
+
+  function handleQuantityInput(id, value) {
+    setQuantityDrafts((prev) => ({ ...prev, [id]: value }))
+  }
+
+  function commitQuantityDraft(item) {
+    const raw = quantityDrafts[item.id]
+    setQuantityDrafts((prev) => {
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
+    if (raw === undefined) return
+    const qty = parseInt(raw, 10)
+    if (!Number.isInteger(qty) || qty === item.quantity) return
+    changeQuantity(item.id, qty)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -105,11 +158,19 @@ function Cart() {
       const res = await fetch(`${BACKEND_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, customer: form, paymentMethod, total, recaptchaToken }),
+        body: JSON.stringify({ items, customer: form, paymentMethod, total, recaptchaToken, lang: getLang() }),
       })
       if (!res.ok) throw new Error('order request failed')
       clearCart()
       setSubmitted(true)
+      Swal.fire({
+        icon: 'info',
+        title: t('printNoticeTitle'),
+        text: t('printNoticeBody'),
+        showCloseButton: true,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#111111',
+      })
     } catch {
       setError(t('orderError'))
       if (RECAPTCHA_SITE_KEY) window.grecaptcha?.reset(widgetId.current)
@@ -123,7 +184,7 @@ function Cart() {
       <div className="cart-empty">
         <h1>{t('orderSuccessTitle')}</h1>
         <p>{t('orderSuccessBody')}</p>
-        <Link to="/" className="cart-continue">
+        <Link to="/proizvodi" className="cart-continue">
           {t('continueShopping')}
         </Link>
       </div>
@@ -134,7 +195,7 @@ function Cart() {
     return (
       <div className="cart-empty">
         <p>{t('emptyCart')}</p>
-        <Link to="/" className="cart-continue">
+        <Link to="/proizvodi" className="cart-continue">
           {t('continueShopping')}
         </Link>
       </div>
@@ -148,30 +209,45 @@ function Cart() {
       <ul className="cart-items">
         {items.map((item) => (
           <li key={item.id} className="cart-item">
-            <img src={item.image} alt={item.name} className="cart-item-image" />
-            <div className="cart-item-info">
-              <p className="cart-item-name">{item.name}</p>
-              {(item.colorName || item.size) && (
-                <p className="cart-item-meta">
-                  {[item.colorName, item.size].filter(Boolean).join(' / ')}
-                </p>
-              )}
-              <p className="cart-item-price">€{item.price.toFixed(2)}</p>
-            </div>
+            <Link to={`/product/${item.id}`} className="cart-item-link">
+              <img src={item.image} alt={item.name} className="cart-item-image" />
+              <div className="cart-item-info">
+                <p className="cart-item-name">{item.name}</p>
+                {(item.colorName || item.size) && (
+                  <p className="cart-item-meta">
+                    {[item.colorName, item.size].filter(Boolean).join(' / ')}
+                  </p>
+                )}
+                <p className="cart-item-price">{formatPrice(item.price)}</p>
+              </div>
+            </Link>
             <div className="cart-item-stepper">
-              <button type="button" onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+              <button type="button" onClick={() => changeQuantity(item.id, item.quantity - 1)}>
                 −
               </button>
-              <span>{item.quantity}</span>
-              <button type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+              <input
+                type="number"
+                min="0"
+                className="cart-item-qty-input"
+                value={quantityDrafts[item.id] ?? String(item.quantity)}
+                onChange={(e) => handleQuantityInput(item.id, e.target.value)}
+                onBlur={() => commitQuantityDraft(item)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    e.target.blur()
+                  }
+                }}
+              />
+              <button type="button" onClick={() => changeQuantity(item.id, item.quantity + 1)}>
                 +
               </button>
             </div>
-            <p className="cart-item-line-total">€{(item.price * item.quantity).toFixed(2)}</p>
+            <p className="cart-item-line-total">{formatLineTotal(item.price, item.quantity)}</p>
             <button
               type="button"
               className="cart-item-remove"
-              onClick={() => handleRemove(item.id)}
+              onClick={() => confirmRemove(item.id)}
               aria-label={t('remove')}
             >
               ×
@@ -187,7 +263,7 @@ function Cart() {
       <div className="cart-price-breakdown">
         <div className="cart-price-row">
           <span>{t('itemsCost')}</span>
-          <span>€{total.toFixed(2)}</span>
+          <span>{formatRsd(totalRsd)}</span>
         </div>
         <div className="cart-price-row">
           <span>{t('deliveryCost')}</span>
@@ -195,7 +271,7 @@ function Cart() {
         </div>
         <div className="cart-price-row cart-price-total">
           <span>{t('total')}</span>
-          <span>€{total.toFixed(2)}</span>
+          <span>{formatRsd(totalRsd)}</span>
         </div>
       </div>
 
@@ -233,12 +309,14 @@ function Cart() {
           required
           value={form.firstName}
           onChange={(e) => updateField('firstName', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('lastName')}
           required
           value={form.lastName}
           onChange={(e) => updateField('lastName', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('phone')}
@@ -246,6 +324,7 @@ function Cart() {
           type="tel"
           value={form.phone}
           onChange={(e) => updateField('phone', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('email')}
@@ -253,29 +332,34 @@ function Cart() {
           type="email"
           value={form.email}
           onChange={(e) => updateField('email', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('address')}
           required
           value={form.address}
           onChange={(e) => updateField('address', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('address2')}
           value={form.address2}
           onChange={(e) => updateField('address2', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('city')}
           required
           value={form.city}
           onChange={(e) => updateField('city', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('zip')}
           required
           value={form.zip}
           onChange={(e) => updateField('zip', e.target.value)}
+          onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('note')}

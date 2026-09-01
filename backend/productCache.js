@@ -1,6 +1,5 @@
-import { getAllProducts, getColors, getModels, getProductStock } from './promobox.js';
+import { getAllProducts, getColors, getModels, getProductStock, getShades } from './promobox.js';
 import { classify, getTree, getUnmappedCombos, resetUnmappedCombos } from './categoryTree.js';
-import { TECHNIQUES, extractTechniques, getUnmatchedPhrases, resetUnmatchedPhrases } from './printTechnique.js';
 
 const LANGS = ['sr', 'en'];
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -9,7 +8,9 @@ const MARKUP = 1.1;
 let cachedProducts = { sr: [], en: [] };
 let cachedGroupedProducts = { sr: [], en: [] };
 let cachedColors = { sr: [], en: [] };
+let cachedShades = { sr: [], en: [] };
 let cachedCategoryTree = [];
+let cachedStockByProduct = new Map();
 let lastRefreshedAt = null;
 
 export function applyMarkup(product) {
@@ -51,7 +52,6 @@ function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
         stockQty,
         colorCodes: new Set(p.Color ? [p.Color] : []),
         createdAt: p.Created,
-        printTechniques: info?.techniques || [],
       };
       group.categoryPath = classify({
         groupWeb1: info?.groupWeb1,
@@ -137,9 +137,6 @@ const SORTERS = {
   stock_desc: (a, b) => b.stockQty - a.stockQty,
 };
 
-// The filters everything but the print-technique checklist shares - both the
-// product list and the technique facet counts (how many results *each*
-// technique option would leave) are built from this same filtered set.
 function applyBaseFilters(products, { nodeId, q, minPrice, maxPrice, inStock } = {}) {
   if (nodeId) {
     const nodePath = nodeId.split('/');
@@ -168,37 +165,83 @@ function applyBaseFilters(products, { nodeId, q, minPrice, maxPrice, inStock } =
   return products;
 }
 
-export function getGroupedProducts({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock, technique, sort } = {}) {
-  let products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock });
-
-  if (technique && technique.length > 0) {
-    products = products.filter((p) => p.printTechniques.some((t) => technique.includes(t)));
-  }
+export function getGroupedProducts({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock, sort } = {}) {
+  const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock });
 
   const sorter = SORTERS[sort] || SORTERS.date_desc;
   return [...products].sort(sorter);
 }
 
-// Counts are computed from every filter except the technique checklist
-// itself, so checking one technique box doesn't shrink the counts next to
-// the others - matching how faceted filters normally behave.
-export function getTechniqueFacets({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock } = {}) {
-  const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock });
+export function getCategoryTree() {
+  return cachedCategoryTree;
+}
 
-  const counts = new Map();
-  for (const p of products) {
-    for (const id of p.printTechniques) counts.set(id, (counts.get(id) || 0) + 1);
+// The newest products overall tend to cluster in whichever category
+// Promobox last uploaded a batch to (e.g. a run of new pens), which makes a
+// poor "what's new" homepage row. This instead takes the newest few products
+// from each main category and interleaves them round-robin, so the row
+// actually spans different kinds of products.
+export function getDiverseNewest({ lang = 'sr', limit = 16 } = {}) {
+  const mains = cachedCategoryTree;
+  if (mains.length === 0) return [];
+
+  const perCategory = Math.max(1, Math.ceil(limit / mains.length));
+  const byCategory = mains.map((main) => {
+    const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId: main.id });
+    return [...products].sort(SORTERS.date_desc).slice(0, perCategory);
+  });
+
+  const result = [];
+  for (let i = 0; i < perCategory && result.length < limit; i++) {
+    for (const list of byCategory) {
+      if (list[i]) result.push(list[i]);
+      if (result.length >= limit) break;
+    }
   }
+  return result;
+}
 
-  return TECHNIQUES.filter((t) => counts.get(t.id) > 0).map((t) => ({
-    id: t.id,
-    name: lang === 'en' ? t.nameEn : t.name,
-    count: counts.get(t.id),
+// Small, ranked set of products for search-as-you-type suggestions - matches
+// whose name starts with the typed text are shown before ones that merely
+// contain it, so typing "sol" surfaces "Solja ..." before "Kesica za solju".
+export function getSuggestions({ lang = 'sr', q, limit = 6 } = {}) {
+  const needle = normalize((q || '').trim());
+  if (!needle) return [];
+
+  const matches = applyBaseFilters(cachedGroupedProducts[lang], { q });
+  const ranked = [...matches].sort((a, b) => {
+    const aStarts = normalize(a.name).startsWith(needle) ? 0 : 1;
+    const bStarts = normalize(b.name).startsWith(needle) ? 0 : 1;
+    return aStarts !== bStarts ? aStarts - bStarts : a.name.localeCompare(b.name);
+  });
+
+  return ranked.slice(0, limit).map((p) => ({
+    variantIds: p.variantIds,
+    model: p.model,
+    name: p.name,
+    image: p.image,
+    minPrice: p.minPrice,
+    maxPrice: p.maxPrice,
   }));
 }
 
-export function getCategoryTree() {
-  return cachedCategoryTree;
+// Other products from the same (deepest) category as the given SKU, for a
+// "similar products" section on the product detail page - the newest ones
+// first, excluding the product itself.
+export function getSimilarProducts({ id, lang = 'sr', limit = 8 } = {}) {
+  const sku = cachedProducts[lang].find((p) => p.Id === id);
+  if (!sku) return [];
+
+  const key = sku.Model || sku.Name;
+  const current = cachedGroupedProducts[lang].find((p) => p.model === key);
+  if (!current || current.categoryPath.length === 0) return [];
+
+  const nodeId = current.categoryPath.join('/');
+  const candidates = applyBaseFilters(cachedGroupedProducts[lang], { nodeId }).filter(
+    (p) => p.model !== key,
+  );
+
+  return [...candidates].sort(SORTERS.date_desc).slice(0, limit);
 }
 
 // All SKUs sharing the same Model as the given product id (its size/color
@@ -219,32 +262,44 @@ export function getColorInfo(code, lang = 'sr') {
   return cachedColors[lang].find((c) => c.Id === code) || null;
 }
 
+// Looks up a Shade code (e.g. "23") for its specific display name and swatch
+// hex value - unlike getColorInfo, this distinguishes shades that share the
+// same broader Color family (e.g. "Plava" vs "Rojal plava").
+export function getShadeInfo(code, lang = 'sr') {
+  return cachedShades[lang].find((s) => s.Id === code) || null;
+}
+
+// Total stock across warehouses for one SKU, keyed the same way as
+// /api/ProductStock's ProductId - used to show each color variant's own
+// stock level on the product page, not just the whole model's total.
+export function getStockQty(id) {
+  return cachedStockByProduct.get(id) || 0;
+}
+
 export async function refreshProducts() {
   try {
     const fetched = {};
     await Promise.all(
       LANGS.map(async (lang) => {
-        const [raw, colors, models] = await Promise.all([getAllProducts(lang), getColors(lang), getModels(lang)]);
-        fetched[lang] = { raw, colors, models };
+        const [raw, colors, models, shades] = await Promise.all([
+          getAllProducts(lang),
+          getColors(lang),
+          getModels(lang),
+          getShades(lang),
+        ]);
+        fetched[lang] = { raw, colors, models, shades };
       }),
     );
     const stock = await getProductStock();
-
-    // Print-technique extraction only understands Serbian phrasing (see
-    // printTechnique.js), so it always runs against the Serbian model text
-    // and that result is reused for both languages - a product's set of
-    // techniques doesn't change with the UI language.
-    const techniquesByModelId = new Map(
-      fetched.sr.models.map((m) => [m.Id, extractTechniques(m.ExtDescr)]),
-    );
 
     const stockByProduct = new Map();
     for (const row of stock) {
       stockByProduct.set(row.ProductId, (stockByProduct.get(row.ProductId) || 0) + row.Qty);
     }
+    cachedStockByProduct = stockByProduct;
 
     for (const lang of LANGS) {
-      const { raw, colors, models } = fetched[lang];
+      const { raw, colors, models, shades } = fetched[lang];
       const modelInfo = new Map(
         models.map((m) => [
           m.Name,
@@ -256,7 +311,6 @@ export async function refreshProducts() {
             groupWeb1: m.GroupWeb1,
             groupWeb2: m.GroupWeb2,
             groupWeb3: m.GroupWeb3,
-            techniques: techniquesByModelId.get(m.Id) || [],
           },
         ]),
       );
@@ -271,6 +325,7 @@ export async function refreshProducts() {
       cachedProducts[lang] = raw.map(applyMarkup).sort((a, b) => a.Id.localeCompare(b.Id));
       cachedGroupedProducts[lang] = groupByModel(cachedProducts[lang], modelInfo, stockByProduct, colorInfo);
       cachedColors[lang] = colors;
+      cachedShades[lang] = shades;
     }
 
     cachedCategoryTree = buildCategoryTree(cachedGroupedProducts.sr);
@@ -283,15 +338,6 @@ export async function refreshProducts() {
       }
     }
     resetUnmappedCombos();
-
-    const unmatched = getUnmatchedPhrases();
-    if (unmatched.length > 0) {
-      console.warn(`${unmatched.length} unrecognized print-technique phrase(s) - add these to printTechnique.js's MATCHERS if they're real techniques:`);
-      for (const { phrase, count } of unmatched) {
-        console.warn(`  "${phrase}" (${count} model${count === 1 ? '' : 's'})`);
-      }
-    }
-    resetUnmatchedPhrases();
 
     lastRefreshedAt = new Date();
     console.log(
