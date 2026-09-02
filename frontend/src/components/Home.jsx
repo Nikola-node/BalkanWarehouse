@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
 import { t, getLang } from '../i18n'
 import ProductCarousel from './ProductCarousel'
@@ -99,11 +100,40 @@ function NewestProducts() {
   )
 }
 
+function CategoryGrid() {
+  const [items, setItems] = useState([])
+
+  useEffect(() => {
+    fetch(`${BACKEND_URL}/api/categories/featured?lang=${getLang()}`)
+      .then((res) => res.json())
+      .then((data) => setItems(data.items))
+      .catch(() => {})
+  }, [])
+
+  if (items.length === 0) return null
+
+  return (
+    <section className="category-grid-section">
+      <div className="category-grid">
+        {items.map((cat) => (
+          <Link key={cat.id} to={`/proizvodi?nodeId=${encodeURIComponent(cat.id)}`} className="category-grid-card">
+            <div className="category-grid-image">
+              <img src={cat.image} alt={cat.name} loading="lazy" />
+            </div>
+            <h3>{cat.name}</h3>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function Home() {
   return (
     <div className="home-page">
       <HeroCarousel />
       <NewestProducts />
+      <CategoryGrid />
     </div>
   )
 }

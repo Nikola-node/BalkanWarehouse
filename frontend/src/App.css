@@ -1256,11 +1256,17 @@
   margin-top: 40px;
 }
 
+.similar-products-carousel-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .similar-products-carousel-viewport {
-  position: relative;
   overflow: hidden;
   width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .similar-products-carousel-track {
@@ -1274,10 +1280,6 @@
 }
 
 .similar-products-carousel-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
@@ -1296,14 +1298,6 @@
 
 .similar-products-carousel-arrow:hover {
   border-color: var(--text);
-}
-
-.similar-products-carousel-arrow-left {
-  left: 8px;
-}
-
-.similar-products-carousel-arrow-right {
-  right: 8px;
 }
 
 .product-specs {
@@ -1650,11 +1644,17 @@
   margin-bottom: 20px;
 }
 
+.newest-products-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .newest-products-viewport {
-  position: relative;
   overflow: hidden;
   width: 100%;
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .newest-products-track {
@@ -1677,10 +1677,6 @@
 }
 
 .newest-products-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 2;
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
@@ -1701,14 +1697,6 @@
   border-color: var(--text);
 }
 
-.newest-products-arrow-left {
-  left: 8px;
-}
-
-.newest-products-arrow-right {
-  right: 8px;
-}
-
 .newest-products-dot {
   width: 8px;
   height: 8px;
@@ -1723,6 +1711,62 @@
   width: 22px;
   border-radius: 4px;
   background: var(--text);
+}
+
+.category-grid-section {
+  margin-top: 48px;
+}
+
+.category-grid-section h2 {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.category-grid-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 12px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.category-grid-card:hover {
+  border-color: var(--text);
+}
+
+.category-grid-image {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #f7f7f7;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.category-grid-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.category-grid-card h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
 }
 
 

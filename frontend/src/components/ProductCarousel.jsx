@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { t } from '../i18n'
 import ProductCard from './ProductCard'
 
@@ -6,13 +6,16 @@ const CARD_GAP = 20
 
 // Fewer cards fit as the viewport narrows - on a phone, a fixed number of
 // fixed-width cards would either overflow the screen or get squeezed
-// unreadably thin.
+// unreadably thin. `width` is the track viewport alone, not the row - the
+// two arrow buttons beside it (~48px each, incl. gap) already ate into it,
+// so these thresholds sit ~100px below where they'd be if arrows still
+// overlaid the cards instead of sitting next to them.
 function visibleCardsFor(width, maxVisible) {
   if (width === 0) return maxVisible // not measured yet - assume desktop, corrected once real width comes in
-  if (width < 480) return 1
-  if (width < 700) return 2
-  if (width < 980) return 3
-  if (width < 1260) return Math.min(4, maxVisible)
+  if (width < 380) return 1
+  if (width < 600) return 2
+  if (width < 880) return 3
+  if (width < 1160) return Math.min(4, maxVisible)
   return maxVisible
 }
 
@@ -40,6 +43,13 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
   // `return null` below), so a useRef+useEffect-on-mount pairing would run
   // before the node exists and never observe anything.
   const [viewportNode, viewportRef] = useState(null)
+  // Clicking (or an auto-advance tick) faster than the 0.4s slide can finish
+  // used to just queue up another setSlot on top of the one still animating
+  // - rapid clicking could stack up dozens of pending slides, each still
+  // rendering its own cards, which is what made the row freeze and show
+  // blank cards until the backlog cleared. A plain ref (not state) is fine
+  // since it only gates a callback and never needs to trigger a render.
+  const busyRef = useRef(false)
 
   useEffect(() => {
     if (!viewportNode) return
@@ -66,10 +76,36 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
     setSlot(visible)
   }, [visible])
 
+  // A backgrounded tab still fires setInterval (just throttled), so a slot
+  // left running would silently rack up many advances while the page isn't
+  // painting anything - then, the moment it's foregrounded again, the very
+  // next paint jumps straight to that far-off slot, sliding through several
+  // cards at once instead of the usual single step. Pausing while hidden
+  // means there's nothing to catch up on when you come back.
   useEffect(() => {
     if (!autoAdvanceMs || items.length <= visible) return
-    const timer = setInterval(() => setSlot((s) => s + 1), autoAdvanceMs)
-    return () => clearInterval(timer)
+    let timer = null
+    function start() {
+      timer = setInterval(() => {
+        if (busyRef.current) return
+        busyRef.current = true
+        setSlot((s) => s + 1)
+      }, autoAdvanceMs)
+    }
+    function stop() {
+      clearInterval(timer)
+      timer = null
+    }
+    function handleVisibility() {
+      if (document.hidden) stop()
+      else if (!timer) start()
+    }
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [items.length, visible, autoAdvanceMs])
 
   if (items.length === 0) return null
@@ -84,20 +120,29 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
   const stepPx = cardWidth + CARD_GAP
 
   function prev() {
+    if (busyRef.current) return
+    busyRef.current = true
     setSlot((s) => s - 1)
   }
 
   function next() {
+    if (busyRef.current) return
+    busyRef.current = true
     setSlot((s) => s + 1)
   }
 
   function goTo(i) {
+    if (busyRef.current) return
+    busyRef.current = true
     setSlot(visible + i)
   }
 
   // Once a wrap-slide finishes, silently snap back into the real range so
-  // there's always room to keep sliding in that direction.
+  // there's always room to keep sliding in that direction. This also always
+  // fires at the end of every real slide, wrap or not, so it's the one spot
+  // that clears `busyRef` and lets the next click or auto-advance through.
   function handleTransitionEnd() {
+    busyRef.current = false
     if (!canLoop) return
     if (slot >= visible + items.length) {
       setAnimate(false)
@@ -112,7 +157,7 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
 
   return (
     <>
-      <div className={`${classPrefix}-viewport`} ref={viewportRef}>
+      <div className={`${classPrefix}-row`}>
         {canLoop && (
           <button
             type="button"
@@ -124,19 +169,21 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
           </button>
         )}
 
-        <div
-          className={`${classPrefix}-track`}
-          style={{
-            transform: `translateX(-${(canLoop ? slot : 0) * stepPx}px)`,
-            transition: animate ? 'transform 0.4s ease' : 'none',
-          }}
-          onTransitionEnd={handleTransitionEnd}
-        >
-          {track.map((product, i) => (
-            <div className={`${classPrefix}-card`} style={{ flexBasis: cardWidth || undefined }} key={`${product.model}-${i}`}>
-              <ProductCard product={product} isNew={isNewBadge} />
-            </div>
-          ))}
+        <div className={`${classPrefix}-viewport`} ref={viewportRef}>
+          <div
+            className={`${classPrefix}-track`}
+            style={{
+              transform: `translateX(-${(canLoop ? slot : 0) * stepPx}px)`,
+              transition: animate ? 'transform 0.4s ease' : 'none',
+            }}
+            onTransitionEnd={handleTransitionEnd}
+          >
+            {track.map((product, i) => (
+              <div className={`${classPrefix}-card`} style={{ flexBasis: cardWidth || undefined }} key={`${product.model}-${i}`}>
+                <ProductCard product={product} isNew={isNewBadge} eager />
+              </div>
+            ))}
+          </div>
         </div>
 
         {canLoop && (

@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const ADS_FILE = path.join(DATA_DIR, 'ads.json');
 export const AD_IMAGES_DIR = path.join(DATA_DIR, 'ads');
 

@@ -132,6 +132,23 @@ app.get('/api/products/featured', (req, res) => {
   res.json({ items: getDiverseNewest({ lang, limit }) });
 });
 
+// One card per main category for the homepage "shop by category" grid -
+// each carries its newest in-stock product's image as a stand-in thumbnail,
+// since categories themselves don't have their own image in Promobox.
+app.get('/api/categories/featured', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const mains = getCategoryTree();
+
+  const items = mains
+    .map((node) => {
+      const [thumb] = getGroupedProducts({ lang, nodeId: node.id, inStock: true, sort: 'date_desc' });
+      return thumb ? { id: node.id, name: lang === 'en' ? node.nameEn : node.name, count: node.count, image: thumb.image } : null;
+    })
+    .filter(Boolean);
+
+  res.json({ items });
+});
+
 app.get('/api/products/suggest', (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';
   const limit = Math.min(10, parseInt(req.query.limit, 10) || 6);

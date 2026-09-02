@@ -5,17 +5,23 @@ import { useCurrency } from '../CurrencyContext'
 
 const VISIBLE_COLORS = 4
 
-function ProductCard({ product, isNew }) {
+function ProductCard({ product, isNew, eager = false }) {
   const { formatPrice } = useCurrency()
   const extraColors = product.colors.length - VISIBLE_COLORS
+  // Carousels only ever hold a small, bounded set of cards and are meant to
+  // be slid through immediately, so native lazy-loading backfires there -
+  // it defers a card's image until it's scrolled into view, which is too
+  // late to avoid a blank flash. The much larger product grid still lazy
+  // loads, where it actually saves bandwidth.
+  const loading = eager ? 'eager' : 'lazy'
 
   return (
     <Link to={`/product/${product.variantIds[0]}`} className="product-card">
       <div className="product-card-image">
         {isNew && <span className="product-card-badge">NEW</span>}
-        {product.image && <img src={product.image} alt={product.name} loading="lazy" />}
+        {product.image && <img src={product.image} alt={product.name} loading={loading} />}
         {product.imageHover && (
-          <img className="product-card-image-hover" src={product.imageHover} alt="" loading="lazy" />
+          <img className="product-card-image-hover" src={product.imageHover} alt="" loading={loading} />
         )}
       </div>
 
