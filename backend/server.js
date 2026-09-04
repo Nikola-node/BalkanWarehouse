@@ -9,6 +9,7 @@ import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails } from './email.js';
 import { getSettings, updateSettings } from './settings.js';
+import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
 import { getAds, addAd, removeAd, AD_IMAGES_DIR } from './ads.js';
 
@@ -310,6 +311,42 @@ async function verifyRecaptcha(token) {
   return data.success === true;
 }
 
+// Price and weight are never trusted from the client - each item's price
+// and weight are looked up fresh from the same product cache every page on
+// the site reads from. Without this, a tampered request could set any
+// price (or weight, to lowball delivery cost) it wants. Returns null if any
+// item in the cart doesn't match a real, in-stock-catalog product.
+function verifyItems(items) {
+  const catalog = new Map(getProducts('sr').map((p) => [p.Id, { price: p.Price, weight: p.Weight || 0 }]));
+  const verifiedItems = [];
+  let totalWeightKg = 0;
+  for (const item of items) {
+    const entry = catalog.get(item?.id);
+    const quantity = Number(item?.quantity);
+    if (!entry || !Number.isInteger(quantity) || quantity <= 0) return null;
+    verifiedItems.push({ ...item, price: entry.price, quantity });
+    totalWeightKg += entry.weight * quantity;
+  }
+  return { verifiedItems, totalWeightKg };
+}
+
+// Lets the cart show a live delivery estimate as items/quantities change,
+// without trusting (or duplicating) the weight-tier math on the frontend -
+// it calls this with the same {id, quantity} shape /api/orders expects.
+app.post('/api/delivery-cost', (req, res) => {
+  const { items } = req.body || {};
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.json({ weightKg: 0, cost: 0 });
+  }
+  const result = verifyItems(items);
+  if (!result) return res.status(400).json({ error: 'Invalid item in cart' });
+  res.json({ weightKg: result.totalWeightKg, cost: getDeliveryCost(result.totalWeightKg) });
+});
+
+app.get('/api/delivery-tiers', (req, res) => {
+  res.json(getDeliveryTiers());
+});
+
 app.post('/api/orders', async (req, res) => {
   const { items, customer, paymentMethod, recaptchaToken, lang } = req.body || {};
 
@@ -322,21 +359,13 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ error: 'No items in order' });
   }
 
-  // Price and total are never trusted from the client - each item's price
-  // is looked up fresh from the same product cache every page on the site
-  // reads from, and the total is computed from that. Without this, a
-  // tampered request could set any price it wants.
-  const catalog = new Map(getProducts('sr').map((p) => [p.Id, p.Price]));
-  const verifiedItems = [];
-  for (const item of items) {
-    const realPrice = catalog.get(item?.id);
-    const quantity = Number(item?.quantity);
-    if (realPrice === undefined || !Number.isInteger(quantity) || quantity <= 0) {
-      return res.status(400).json({ error: 'Invalid item in order' });
-    }
-    verifiedItems.push({ ...item, price: realPrice, quantity });
+  const result = verifyItems(items);
+  if (!result) {
+    return res.status(400).json({ error: 'Invalid item in order' });
   }
-  const total = verifiedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const { verifiedItems, totalWeightKg } = result;
+  const itemsTotal = verifiedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryCost = getDeliveryCost(totalWeightKg);
 
   const order = {
     orderNumber: generateOrderNumber(),
@@ -344,7 +373,12 @@ app.post('/api/orders', async (req, res) => {
     items: verifiedItems,
     customer,
     paymentMethod,
-    total,
+    total: itemsTotal,
+    // Delivery is priced and shown in RSD (it's a courier's own RSD rate
+    // card, not a EUR figure converted like the products are), so it's
+    // kept separate from `total`, which stays in EUR like the rest of the
+    // order - the email template adds them together after converting.
+    deliveryCostRsd: deliveryCost,
     // The customer's own confirmation email is sent in whatever language
     // their site was in - the shop's own notification copy always goes out
     // in Serbian regardless, since that's who's actually reading it.

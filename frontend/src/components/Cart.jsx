@@ -27,6 +27,87 @@ function FormField({ label, textarea, ...props }) {
   )
 }
 
+// A "?" button next to the delivery cost row that reveals the weight-tier
+// table it's computed from - fetched from the backend (rather than
+// hardcoded here) so it can never drift from the actual pricing logic.
+function DeliveryInfoButton() {
+  const { formatRsd } = useCurrency()
+  const [open, setOpen] = useState(false)
+  const [tiers, setTiers] = useState(null)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (!open || tiers) return
+    fetch(`${BACKEND_URL}/api/delivery-tiers`)
+      .then((res) => res.json())
+      .then(setTiers)
+      .catch(() => {})
+  }, [open, tiers])
+
+  useEffect(() => {
+    if (!open) return
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  const lastTier = tiers?.tiers[tiers.tiers.length - 1]
+  // Split off just the first word (e.g. "per") so it can sit on the price
+  // line instead of wrapping down with the rest of the sentence.
+  const suffix = t('deliveryPerKgSuffix')
+  const suffixSpaceIndex = suffix.indexOf(' ')
+  const suffixFirstWord = suffixSpaceIndex === -1 ? suffix : suffix.slice(0, suffixSpaceIndex)
+  const suffixRest = suffixSpaceIndex === -1 ? '' : suffix.slice(suffixSpaceIndex + 1)
+
+  return (
+    <span className="delivery-info" ref={wrapperRef} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        className="delivery-info-trigger"
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setOpen(true)}
+        aria-label={t('deliveryInfoLabel')}
+        aria-expanded={open}
+      >
+        ?
+      </button>
+      {open && (
+        <div className="delivery-info-popover" role="tooltip">
+          <p className="delivery-info-intro">{t('deliveryInfoIntro')}</p>
+          {tiers && (
+            <table className="delivery-info-table">
+              <tbody>
+                {tiers.tiers.map((tier, i) => (
+                  <tr key={tier.upToKg}>
+                    <td>
+                      {i === 0
+                        ? `${t('deliveryUpToPrefix')} ${tier.upToKg} kg`
+                        : `${tiers.tiers[i - 1].upToKg}–${tier.upToKg} kg`}
+                    </td>
+                    <td>{formatRsd(tier.price)}</td>
+                  </tr>
+                ))}
+                <tr className="delivery-info-over-row">
+                  <td>
+                    {t('deliveryOverPrefix')} {lastTier.upToKg} kg
+                  </td>
+                  <td>
+                    {formatRsd(lastTier.price)} + {formatRsd(tiers.perKgOver20)} {suffixFirstWord}
+                    <br />
+                    {suffixRest}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
+
 function Cart() {
   const { items, updateQuantity, removeItem, clearCart, total } = useCart()
   const { formatPrice, formatLineTotal, toRsd, formatRsd } = useCurrency()
@@ -34,6 +115,10 @@ function Cart() {
   // EUR total - otherwise the displayed grand total can land a few dinars
   // off from what adding up the displayed line totals gives you.
   const totalRsd = items.reduce((sum, item) => sum + toRsd(item.price) * item.quantity, 0)
+  // Computed by the backend from each item's real weight, same as the
+  // price - never guessed client-side, so it can't drift from what the
+  // order will actually be charged.
+  const [deliveryCostRsd, setDeliveryCostRsd] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('card')
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
@@ -71,6 +156,21 @@ function Cart() {
     }, 300)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setDeliveryCostRsd(0)
+      return
+    }
+    fetch(`${BACKEND_URL}/api/delivery-cost`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    })
+      .then((res) => res.json())
+      .then((data) => setDeliveryCostRsd(data.cost || 0))
+      .catch(() => {})
+  }, [items])
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -266,12 +366,15 @@ function Cart() {
           <span>{formatRsd(totalRsd)}</span>
         </div>
         <div className="cart-price-row">
-          <span>{t('deliveryCost')}</span>
-          <span>{t('free')}</span>
+          <span className="cart-price-label-with-info">
+            <DeliveryInfoButton />
+            {t('deliveryCost')}
+          </span>
+          <span>{formatRsd(deliveryCostRsd)}</span>
         </div>
         <div className="cart-price-row cart-price-total">
           <span>{t('total')}</span>
-          <span>{formatRsd(totalRsd)}</span>
+          <span>{formatRsd(totalRsd + deliveryCostRsd)}</span>
         </div>
       </div>
 

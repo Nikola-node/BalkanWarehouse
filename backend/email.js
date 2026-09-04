@@ -50,7 +50,6 @@ const STRINGS = {
     lineTotal: 'Ukupna cena',
     itemsCost: 'Cena artikala:',
     deliveryCost: 'Troškovi isporuke:',
-    free: 'Besplatno',
     total: 'Ukupno:',
     locale: 'sr-RS',
   },
@@ -86,7 +85,6 @@ const STRINGS = {
     lineTotal: 'Line total',
     itemsCost: 'Items cost:',
     deliveryCost: 'Delivery cost:',
-    free: 'Free',
     total: 'Total:',
     locale: 'en-US',
   },
@@ -123,7 +121,7 @@ function infoTable(rows) {
     </table>`;
 }
 
-function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate }, lang) {
+function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate, deliveryCostRsd }, lang) {
   const t = STRINGS[lang] || STRINGS.sr;
   const paymentLabels = { card: t.payByCard, cash: t.payByCash };
 
@@ -207,11 +205,11 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
       </tr>
       <tr>
         <td style="padding: 3px 12px 3px 0; color: #555;">${t.deliveryCost}</td>
-        <td style="padding: 3px 0;">${t.free}</td>
+        <td style="padding: 3px 0;">${formatRsd(deliveryCostRsd, t.locale)}</td>
       </tr>
       <tr>
         <td style="padding: 6px 12px 3px 0; font-weight: bold;">${t.total}</td>
-        <td style="padding: 6px 0 3px; font-weight: bold;">${formatRsd(itemsCostRsd, t.locale)}</td>
+        <td style="padding: 6px 0 3px; font-weight: bold;">${formatRsd(itemsCostRsd + deliveryCostRsd, t.locale)}</td>
       </tr>
     </table>
   </div>`;
