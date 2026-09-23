@@ -4,7 +4,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { getGroupedProducts, getCategoryTree, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails } from './email.js';
@@ -273,7 +273,7 @@ app.get('/api/products/:id', async (req, res) => {
         size: p.Size,
         color: p.Shade,
         colorName: shadeInfo?.Name || p.Color,
-        htmlColor: shadeInfo?.HtmlColor || '',
+        htmlColor: shadeInfo?.HtmlColor || getColorInfo(p.Color, lang)?.HtmlColor || '',
         price: p.Price,
         stockQty: getStockQty(p.Id),
       };

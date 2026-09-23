@@ -187,7 +187,7 @@ export function getDiverseNewest({ lang = 'sr', limit = 16 } = {}) {
 
   const perCategory = Math.max(1, Math.ceil(limit / mains.length));
   const byCategory = mains.map((main) => {
-    const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId: main.id });
+    const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId: main.id, inStock: true });
     return [...products].sort(SORTERS.date_desc).slice(0, perCategory);
   });
 
