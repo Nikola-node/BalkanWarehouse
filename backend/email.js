@@ -11,7 +11,7 @@ const SELLER = {
   pib: '111829034',
   activityCode: '4690',
   bankAccount: '160-6000000045353-81',
-  email: 'office@tshirtshop.rs',
+  email: 'info@balkanwarehouse.com',
 };
 
 // Only the email template's own static labels are translated - item names
@@ -103,7 +103,7 @@ function toRsd(amountEur, rate) {
 }
 
 function formatRsd(rsdAmount, locale) {
-  return `${rsdAmount.toLocaleString(locale)} din`;
+  return `${rsdAmount.toLocaleString(locale)} RSD`;
 }
 
 function infoTable(rows) {
@@ -257,5 +257,45 @@ export async function sendOrderEmails(order) {
     if (error) console.error('Failed to send customer confirmation email:', error.message);
   } catch (err) {
     console.error('Failed to send customer confirmation email:', err.message);
+  }
+}
+
+// The contact form always goes to info@ - reply-to is set to the sender's
+// own address so replying in an inbox goes straight back to them, without
+// needing to copy their address out of the message body.
+export async function sendContactEmail({ name, email, message }) {
+  if (!resend) {
+    console.warn('RESEND_API_KEY not set - skipping contact email');
+    return;
+  }
+
+  const from = process.env.RESEND_FROM_EMAIL || 'BalkanWarehouse <onboarding@resend.dev>';
+  const html = `
+    <div style="font-family: Arial, sans-serif; font-size: 14px; color: #111;">
+      <h3 style="margin-bottom: 8px;">Nova poruka sa kontakt forme</h3>
+      <table style="border-collapse: collapse; margin-bottom: 20px;">
+        <tr>
+          <td style="padding: 3px 12px 3px 0; color: #555;">Ime:</td>
+          <td style="padding: 3px 0;">${name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 3px 12px 3px 0; color: #555;">Email:</td>
+          <td style="padding: 3px 0;">${email}</td>
+        </tr>
+      </table>
+      <p style="white-space: pre-wrap;">${message}</p>
+    </div>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to: 'info@balkanwarehouse.com',
+      replyTo: email,
+      subject: `Poruka sa sajta od ${name}`,
+      html,
+    });
+    if (error) console.error('Failed to send contact email:', error.message);
+  } catch (err) {
+    console.error('Failed to send contact email:', err.message);
   }
 }

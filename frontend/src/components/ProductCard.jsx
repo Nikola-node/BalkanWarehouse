@@ -6,7 +6,7 @@ import { useCurrency } from '../CurrencyContext'
 const VISIBLE_COLORS = 4
 
 function ProductCard({ product, isNew, eager = false }) {
-  const { formatPrice } = useCurrency()
+  const { formatPrice, formatPriceExclVat } = useCurrency()
   const extraColors = product.colors.length - VISIBLE_COLORS
   // Carousels only ever hold a small, bounded set of cards and are meant to
   // be slid through immediately, so native lazy-loading backfires there -
@@ -55,13 +55,23 @@ function ProductCard({ product, isNew, eager = false }) {
 
       <div className="product-card-price-row">
         <span className="product-card-price-label">{t('price')}</span>
-        <span className="product-card-price">
-          {product.maxPrice === 0
-            ? t('priceOnRequest')
-            : product.minPrice === product.maxPrice
-              ? formatPrice(product.minPrice)
-              : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`}
-        </span>
+        {product.maxPrice === 0 ? (
+          <span className="product-card-price">{t('priceOnRequest')}</span>
+        ) : (
+          <span className="product-card-price-group">
+            <span className="product-card-price">
+              {product.minPrice === product.maxPrice
+                ? formatPriceExclVat(product.minPrice)
+                : `${formatPriceExclVat(product.minPrice)} - ${formatPriceExclVat(product.maxPrice)}`}
+            </span>
+            <span className="product-card-price-incl-vat">
+              {product.minPrice === product.maxPrice
+                ? formatPrice(product.minPrice)
+                : `${formatPrice(product.minPrice)} - ${formatPrice(product.maxPrice)}`}{' '}
+              {t('inclVat')}
+            </span>
+          </span>
+        )}
       </div>
     </Link>
   )

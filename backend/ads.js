@@ -27,8 +27,14 @@ export function getAds() {
   return cachedAds;
 }
 
-export function addAd(filename) {
-  cachedAds = [...cachedAds, { filename, createdAt: new Date().toISOString() }];
+export function addAd(filename, link = '') {
+  cachedAds = [...cachedAds, { filename, link, createdAt: new Date().toISOString() }];
+  persist();
+  return cachedAds;
+}
+
+export function updateAdLink(filename, link) {
+  cachedAds = cachedAds.map((a) => (a.filename === filename ? { ...a, link } : a));
   persist();
   return cachedAds;
 }

@@ -18,13 +18,24 @@ function Admin() {
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
+  const [view, setView] = useState('settings')
+  const [orders, setOrders] = useState([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
+  const [ordersLoaded, setOrdersLoaded] = useState(false)
+  const [deletingOrderId, setDeletingOrderId] = useState('')
+
   const [ads, setAds] = useState([])
   const [loadingAds, setLoadingAds] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState('')
+  const [newAdLink, setNewAdLink] = useState('')
   const [uploading, setUploading] = useState(false)
   const [adError, setAdError] = useState('')
   const [deletingId, setDeletingId] = useState('')
+  // Draft link text per ad id, kept separate from the saved `ads` list so
+  // typing doesn't need a round-trip to the server on every keystroke.
+  const [linkDrafts, setLinkDrafts] = useState({})
+  const [savingLinkId, setSavingLinkId] = useState('')
   const fileInputRef = useRef(null)
 
   const recaptchaRef = useRef(null)
@@ -82,6 +93,31 @@ function Admin() {
       .finally(() => setLoadingSettings(false))
   }, [token])
 
+  // Loaded once, the first time the Orders tab is actually opened - not on
+  // login, since most visits to this page are just to change the rate or
+  // banners and don't need the order list fetched at all.
+  useEffect(() => {
+    if (!token || view !== 'orders' || ordersLoaded) return
+    setLoadingOrders(true)
+    fetch(`${BACKEND_URL}/api/admin/orders`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (res.status === 401) {
+          forceLogout()
+          return null
+        }
+        return res.json()
+      })
+      .then((data) => {
+        if (data) {
+          setOrders(data.items)
+          setOrdersLoaded(true)
+        }
+      })
+      .finally(() => setLoadingOrders(false))
+  }, [token, view, ordersLoaded])
+
   // The list itself is public (it's exactly what the homepage banner
   // already shows everyone), so this loads without needing the admin token
   // - only adding/removing one requires it.
@@ -90,7 +126,10 @@ function Admin() {
     setLoadingAds(true)
     fetch(`${BACKEND_URL}/api/ads`)
       .then((res) => res.json())
-      .then((data) => setAds(data.items))
+      .then((data) => {
+        setAds(data.items)
+        setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
+      })
       .finally(() => setLoadingAds(false))
   }, [token])
 
@@ -113,6 +152,7 @@ function Admin() {
   function clearSelectedFile() {
     setSelectedFile(null)
     setPreviewUrl('')
+    setNewAdLink('')
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -123,6 +163,7 @@ function Admin() {
     try {
       const formData = new FormData()
       formData.append('image', selectedFile)
+      formData.append('link', newAdLink.trim())
       const res = await fetch(`${BACKEND_URL}/api/admin/ads`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -138,11 +179,53 @@ function Admin() {
         return
       }
       setAds(data.items)
+      setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
       clearSelectedFile()
     } catch {
       setAdError('Otpremanje nije uspelo.')
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleSaveLink(id) {
+    setSavingLinkId(id)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/ads/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ link: (linkDrafts[id] || '').trim() }),
+      })
+      if (res.status === 401) {
+        forceLogout()
+        return
+      }
+      const data = await res.json()
+      if (res.ok) {
+        setAds(data.items)
+        setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
+      }
+    } finally {
+      setSavingLinkId('')
+    }
+  }
+
+  async function handleDeleteOrder(orderNumber) {
+    if (!window.confirm(`Obrisati porudžbinu ${orderNumber}? Ovo se ne može poništiti.`)) return
+    setDeletingOrderId(orderNumber)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/orders/${encodeURIComponent(orderNumber)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status === 401) {
+        forceLogout()
+        return
+      }
+      const data = await res.json()
+      if (res.ok) setOrders(data.items)
+    } finally {
+      setDeletingOrderId('')
     }
   }
 
@@ -265,16 +348,104 @@ function Admin() {
     )
   }
 
+  const rate = Number(rateInput) || 117.5
+
   return (
     <div className="admin-page">
-      <div className="admin-card">
-        <div className="admin-header">
-          <h2>Podešavanja</h2>
-          <button type="button" className="admin-logout" onClick={handleLogout}>
-            Odjavi se
+      <div className="admin-topbar">
+        <nav className="admin-tabs">
+          <button
+            type="button"
+            className={`admin-tab ${view === 'settings' ? 'active' : ''}`}
+            onClick={() => setView('settings')}
+          >
+            Podešavanja
           </button>
-        </div>
+          <button
+            type="button"
+            className={`admin-tab ${view === 'orders' ? 'active' : ''}`}
+            onClick={() => setView('orders')}
+          >
+            Narudžbine
+          </button>
+        </nav>
+        <button type="button" className="admin-logout" onClick={handleLogout}>
+          Odjavi se
+        </button>
+      </div>
 
+      {view === 'orders' ? (
+        <div className="admin-card admin-orders-card">
+          <h2>Narudžbine</h2>
+          {loadingOrders ? (
+            <p>Učitavanje...</p>
+          ) : orders.length === 0 ? (
+            <p className="admin-hint">Trenutno nema porudžbina.</p>
+          ) : (
+            <div className="admin-orders-table-wrap">
+              <table className="admin-orders-table">
+                <thead>
+                  <tr>
+                    <th>Ime i prezime</th>
+                    <th>Broj narudžbine</th>
+                    <th>Datum</th>
+                    <th>Artikli</th>
+                    <th>Iznos</th>
+                    <th>Telefon</th>
+                    <th>Mesto</th>
+                    <th>Adresa</th>
+                    <th>Plaćanje</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => {
+                    const itemsCostRsd = Math.round(order.total * rate)
+                    const grandTotalRsd = itemsCostRsd + (order.deliveryCostRsd || 0)
+                    return (
+                      <tr key={order.orderNumber}>
+                        <td>
+                          {order.customer?.firstName} {order.customer?.lastName}
+                        </td>
+                        <td>{order.orderNumber}</td>
+                        <td>{new Date(order.createdAt).toLocaleDateString('sr-RS')}</td>
+                        <td>
+                          <ol className="admin-orders-items">
+                            {order.items?.map((item, i) => (
+                              <li key={i}>
+                                {item.name} × {item.quantity}
+                              </li>
+                            ))}
+                          </ol>
+                        </td>
+                        <td>{grandTotalRsd.toLocaleString('sr-RS')} RSD</td>
+                        <td>{order.customer?.phone}</td>
+                        <td>{order.customer?.city}</td>
+                        <td>{order.customer?.address}</td>
+                        <td>{order.paymentMethod === 'card' ? 'Kartica' : 'Pouzeće'}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-orders-delete"
+                            onClick={() => handleDeleteOrder(order.orderNumber)}
+                            disabled={deletingOrderId === order.orderNumber}
+                            aria-label="Obriši"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+      <div className="admin-card">
+        <h2>Kurs razmene</h2>
         {loadingSettings ? (
           <p>Učitavanje...</p>
         ) : (
@@ -305,7 +476,9 @@ function Admin() {
         <p className="admin-hint">
           Slike koje se prikazuju u baneru na početnoj strani. Preporučen format je oko 3:1 (npr.
           1500×500px) - svaka slika se automatski iseče da popuni taj format, tako da nije potrebna
-          tačna veličina.
+          tačna veličina. Svaka slika može da vodi na neku stranicu sajta ili spoljni link kada se
+          klikne - npr. /proizvodi?nodeId=neka-kategorija, /product/123, ili puna adresa poput
+          https://...
         </p>
 
         {loadingAds ? (
@@ -324,6 +497,23 @@ function Admin() {
                 >
                   ×
                 </button>
+                <div className="admin-ads-link-row">
+                  <input
+                    type="text"
+                    className="admin-ads-link-input"
+                    placeholder="Link (opciono)"
+                    value={linkDrafts[ad.id] ?? ''}
+                    onChange={(e) => setLinkDrafts({ ...linkDrafts, [ad.id]: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="admin-ads-link-save"
+                    onClick={() => handleSaveLink(ad.id)}
+                    disabled={savingLinkId === ad.id || (linkDrafts[ad.id] ?? '') === (ad.link || '')}
+                  >
+                    {savingLinkId === ad.id ? '...' : 'Sačuvaj'}
+                  </button>
+                </div>
               </li>
             ))}
             {ads.length === 0 && <p className="admin-hint">Trenutno nema reklama.</p>}
@@ -334,6 +524,18 @@ function Admin() {
           <span className="form-field-label">Nova slika</span>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} />
         </label>
+
+        {selectedFile && (
+          <label className="form-field">
+            <span className="form-field-label">Link (opciono)</span>
+            <input
+              type="text"
+              placeholder="/proizvodi?nodeId=... ili https://..."
+              value={newAdLink}
+              onChange={(e) => setNewAdLink(e.target.value)}
+            />
+          </label>
+        )}
 
         {previewUrl && (
           <div className="admin-ads-preview">
@@ -352,6 +554,8 @@ function Admin() {
           {uploading ? 'Otpremanje...' : 'Otpremi sliku'}
         </button>
       </div>
+        </>
+      )}
     </div>
   )
 }

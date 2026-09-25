@@ -7,11 +7,12 @@ import multer from 'multer';
 import { getGroupedProducts, getCategoryTree, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
-import { generateOrderNumber, sendOrderEmails } from './email.js';
+import { generateOrderNumber, sendOrderEmails, sendContactEmail } from './email.js';
 import { getSettings, updateSettings } from './settings.js';
 import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
-import { getAds, addAd, removeAd, AD_IMAGES_DIR } from './ads.js';
+import { getAds, addAd, removeAd, updateAdLink, AD_IMAGES_DIR } from './ads.js';
+import { getOrders, addOrder, removeOrder } from './orders.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -65,6 +66,14 @@ app.put('/api/admin/settings', requireAdmin, (req, res) => {
   res.json(updateSettings({ eurToRsdRate: rate }));
 });
 
+app.get('/api/admin/orders', requireAdmin, (req, res) => {
+  res.json({ items: getOrders() });
+});
+
+app.delete('/api/admin/orders/:orderNumber', requireAdmin, (req, res) => {
+  res.json({ items: removeOrder(req.params.orderNumber) });
+});
+
 // The extension a saved ad image gets is picked from this map, never taken
 // from the uploaded file's own name - an uploaded file renamed to end in
 // .html (with a spoofed image/* content-type) would otherwise be served
@@ -93,7 +102,9 @@ const adUpload = multer({
 });
 
 function adsResponse() {
-  return { items: getAds().map((ad) => ({ id: ad.filename, url: `/uploads/ads/${ad.filename}` })) };
+  return {
+    items: getAds().map((ad) => ({ id: ad.filename, url: `/uploads/ads/${ad.filename}`, link: ad.link || '' })),
+  };
 }
 
 // Public - the homepage banner carousel reads whatever ads are currently
@@ -110,9 +121,14 @@ app.post('/api/admin/ads', requireAdmin, (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
-    addAd(req.file.filename);
+    addAd(req.file.filename, req.body.link || '');
     res.json(adsResponse());
   });
+});
+
+app.put('/api/admin/ads/:id', requireAdmin, (req, res) => {
+  updateAdLink(req.params.id, req.body?.link || '');
+  res.json(adsResponse());
 });
 
 app.delete('/api/admin/ads/:id', requireAdmin, (req, res) => {
@@ -386,12 +402,30 @@ app.post('/api/orders', async (req, res) => {
   };
 
   console.log('New order received:', JSON.stringify(order, null, 2));
+  addOrder(order);
   // Cart prices are kept in EUR end to end (the site's source of truth,
   // straight from Promobox) - the order email converts to RSD for display
   // using whatever rate is current right now, same as the site itself.
   await sendOrderEmails({ ...order, eurToRsdRate: getSettings().eurToRsdRate });
 
   res.json({ ok: true, orderNumber: order.orderNumber });
+});
+
+app.post('/api/contact', async (req, res) => {
+  const { name, email, message, recaptchaToken } = req.body || {};
+
+  const humanVerified = await verifyRecaptcha(recaptchaToken);
+  if (!humanVerified) {
+    return res.status(400).json({ error: 'Captcha verification failed' });
+  }
+
+  if (!name?.trim() || !email?.trim() || !message?.trim()) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  await sendContactEmail({ name: name.trim(), email: email.trim(), message: message.trim() });
+
+  res.json({ ok: true });
 });
 
 await refreshProducts();

@@ -30,11 +30,20 @@ export function CurrencyProvider({ children }) {
   }
 
   function formatRsd(rsdAmount) {
-    return `${rsdAmount.toLocaleString('sr-RS')} din`
+    return `${rsdAmount.toLocaleString('sr-RS')} RSD`
   }
 
   function formatPrice(eurAmount) {
     return formatRsd(toRsd(eurAmount))
+  }
+
+  // Displayed prices are tax-inclusive (the legally required final price for
+  // a VAT-registered seller) - this derives the pre-tax figure shown as a
+  // secondary line, dividing the same rounded RSD amount customers see
+  // rather than converting from EUR separately, so the two numbers always
+  // multiply back to each other exactly (PDV rate is 20%, i.e. *1.2).
+  function formatPriceExclVat(eurAmount) {
+    return formatRsd(Math.round(toRsd(eurAmount) / 1.2))
   }
 
   // A line total has to be the displayed unit price times the quantity, or
@@ -58,7 +67,7 @@ export function CurrencyProvider({ children }) {
 
   return (
     <CurrencyContext.Provider
-      value={{ rate, formatPrice, formatLineTotal, toRsd, formatRsd, eurFromRsd, rsdFromEur }}
+      value={{ rate, formatPrice, formatPriceExclVat, formatLineTotal, toRsd, formatRsd, eurFromRsd, rsdFromEur }}
     >
       {children}
     </CurrencyContext.Provider>

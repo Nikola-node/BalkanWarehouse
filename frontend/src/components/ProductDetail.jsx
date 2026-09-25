@@ -17,7 +17,7 @@ function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { addItem } = useCart()
-  const { formatPrice } = useCurrency()
+  const { formatPrice, formatPriceExclVat } = useCurrency()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeImage, setActiveImage] = useState(0)
@@ -402,9 +402,16 @@ function ProductDetail() {
         {product.Model?.Description && (
           <p className="product-short-desc">{product.Model.Description}</p>
         )}
-        <p className="product-price">
-          {product.Price === 0 ? t('callForPrice') : formatPrice(product.Price)}
-        </p>
+        {product.Price === 0 ? (
+          <p className="product-price">{t('callForPrice')}</p>
+        ) : (
+          <>
+            <p className="product-price">{formatPriceExclVat(product.Price)}</p>
+            <p className="product-price-incl-vat">
+              {formatPrice(product.Price)} {t('inclVat')}
+            </p>
+          </>
+        )}
         <p className={inStock ? 'stock-in' : 'stock-out'}>
           {inStock ? t('inStock') : t('outOfStock')}
         </p>

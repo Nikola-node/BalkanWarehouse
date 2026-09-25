@@ -46,11 +46,26 @@ function HeroCarousel() {
         </button>
       )}
 
-      {ads.map((ad, i) => (
-        <div className={`hero-slide ${i === index ? 'active' : ''}`} key={ad.id}>
-          <img className="hero-slide-image" src={`${BACKEND_URL}${ad.url}`} alt="" />
-        </div>
-      ))}
+      {ads.map((ad, i) => {
+        const image = <img className="hero-slide-image" src={`${BACKEND_URL}${ad.url}`} alt="" />
+        return (
+          <div className={`hero-slide ${i === index ? 'active' : ''}`} key={ad.id}>
+            {ad.link ? (
+              ad.link.startsWith('/') ? (
+                <Link to={ad.link} className="hero-slide-link">
+                  {image}
+                </Link>
+              ) : (
+                <a href={ad.link} target="_blank" rel="noreferrer" className="hero-slide-link">
+                  {image}
+                </a>
+              )
+            ) : (
+              image
+            )}
+          </div>
+        )
+      })}
 
       {ads.length > 1 && (
         <button type="button" className="hero-arrow hero-arrow-right" onClick={next} aria-label={t('heroNextSlide')}>
