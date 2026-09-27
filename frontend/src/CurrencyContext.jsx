@@ -24,13 +24,15 @@ export function CurrencyProvider({ children }) {
   // markup applied) - this is the one place that turns a EUR amount into
   // the RSD text shown to a customer, so every price on the site converts
   // consistently and updates together when an admin changes the rate.
-  // Rounds to the whole dinar, since RSD has no smaller unit in practice.
+  // Rounds to the para (RSD's smallest unit, 1/100 of a dinar) rather than
+  // the whole dinar - card-payment standards require amounts be shown down
+  // to the smallest currency unit, not rounded away.
   function toRsd(eurAmount) {
-    return Math.round(eurAmount * rate)
+    return Math.round(eurAmount * rate * 100) / 100
   }
 
   function formatRsd(rsdAmount) {
-    return `${rsdAmount.toLocaleString('sr-RS')} RSD`
+    return `${rsdAmount.toLocaleString('sr-RS', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`
   }
 
   function formatPrice(eurAmount) {
@@ -39,18 +41,18 @@ export function CurrencyProvider({ children }) {
 
   // Displayed prices are tax-inclusive (the legally required final price for
   // a VAT-registered seller) - this derives the pre-tax figure shown as a
-  // secondary line, dividing the same rounded RSD amount customers see
-  // rather than converting from EUR separately, so the two numbers always
-  // multiply back to each other exactly (PDV rate is 20%, i.e. *1.2).
+  // secondary line, dividing the same RSD amount customers see rather than
+  // converting from EUR separately, so the two numbers always multiply back
+  // to each other exactly (PDV rate is 20%, i.e. *1.2).
   function formatPriceExclVat(eurAmount) {
-    return formatRsd(Math.round(toRsd(eurAmount) / 1.2))
+    return formatRsd(Math.round((toRsd(eurAmount) / 1.2) * 100) / 100)
   }
 
   // A line total has to be the displayed unit price times the quantity, or
-  // it won't add up for the customer (e.g. "310 din" shown per unit but a
-  // total that isn't a clean multiple of 310) - so this rounds the unit
-  // price to RSD *first*, then multiplies, rather than converting
-  // quantity*EUR to RSD and rounding only once at the end.
+  // it won't add up for the customer (e.g. "310,00 RSD" shown per unit but a
+  // total that isn't a clean multiple of 310,00) - so this rounds the unit
+  // price to RSD (to the para) *first*, then multiplies, rather than
+  // converting quantity*EUR to RSD and rounding only once at the end.
   function formatLineTotal(eurUnitPrice, quantity) {
     return formatRsd(toRsd(eurUnitPrice) * quantity)
   }

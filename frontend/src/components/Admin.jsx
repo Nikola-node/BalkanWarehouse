@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
 
+const ORDER_STATUS_LABELS = {
+  pending: 'Nova',
+  paid: 'Rezervisano',
+  failed: 'Neuspešno',
+  captured: 'Naplaćeno',
+  voided: 'Otkazano',
+  refunded: 'Povraćeno',
+}
+
 // Not linked from anywhere in the site's nav - reached only by knowing the
 // /admin URL, which is enough gatekeeping for a single-owner internal tool
 // sitting behind its own password.
@@ -23,6 +32,8 @@ function Admin() {
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [ordersLoaded, setOrdersLoaded] = useState(false)
   const [deletingOrderId, setDeletingOrderId] = useState('')
+  const [actingOrderId, setActingOrderId] = useState('')
+  const [actionError, setActionError] = useState('')
 
   const [ads, setAds] = useState([])
   const [loadingAds, setLoadingAds] = useState(false)
@@ -229,6 +240,38 @@ function Admin() {
     }
   }
 
+  const ACTION_CONFIRM = {
+    capture: (n) => `Naplatiti porudžbinu ${n}? Ovo stvarno zadužuje karticu kupca - uradite ovo tek kada je porudžbina poslata.`,
+    void: (n) => `Otkazati rezervaciju za porudžbinu ${n}? Kupac neće biti zadužen.`,
+    refund: (n) => `Vratiti novac za porudžbinu ${n}?`,
+  }
+
+  async function handleOrderAction(orderNumber, action) {
+    if (!window.confirm(ACTION_CONFIRM[action](orderNumber))) return
+    setActingOrderId(orderNumber)
+    setActionError('')
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/orders/${encodeURIComponent(orderNumber)}/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.status === 401) {
+        forceLogout()
+        return
+      }
+      const data = await res.json()
+      if (res.ok) {
+        setOrders(data.items)
+      } else {
+        setActionError(`${orderNumber}: ${data.error || 'Akcija nije uspela.'}`)
+      }
+    } catch {
+      setActionError(`${orderNumber}: Akcija nije uspela.`)
+    } finally {
+      setActingOrderId('')
+    }
+  }
+
   async function handleDeleteAd(id) {
     if (!window.confirm('Ukloniti ovu reklamu sa početne strane?')) return
     setDeletingId(id)
@@ -377,6 +420,7 @@ function Admin() {
       {view === 'orders' ? (
         <div className="admin-card admin-orders-card">
           <h2>Narudžbine</h2>
+          {actionError && <p className="admin-error">{actionError}</p>}
           {loadingOrders ? (
             <p>Učitavanje...</p>
           ) : orders.length === 0 ? (
@@ -395,6 +439,8 @@ function Admin() {
                     <th>Mesto</th>
                     <th>Adresa</th>
                     <th>Plaćanje</th>
+                    <th>Status</th>
+                    <th>DMS</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -402,6 +448,7 @@ function Admin() {
                   {orders.map((order) => {
                     const itemsCostRsd = Math.round(order.total * rate)
                     const grandTotalRsd = itemsCostRsd + (order.deliveryCostRsd || 0)
+                    const acting = actingOrderId === order.orderNumber
                     return (
                       <tr key={order.orderNumber}>
                         <td>
@@ -423,6 +470,39 @@ function Admin() {
                         <td>{order.customer?.city}</td>
                         <td>{order.customer?.address}</td>
                         <td>{order.paymentMethod === 'card' ? 'Kartica' : 'Pouzeće'}</td>
+                        <td>{ORDER_STATUS_LABELS[order.status] || order.status || '-'}</td>
+                        <td>
+                          {order.paymentMethod === 'card' && order.status === 'paid' && (
+                            <div className="admin-orders-dms-actions">
+                              <button
+                                type="button"
+                                className="admin-orders-action"
+                                onClick={() => handleOrderAction(order.orderNumber, 'capture')}
+                                disabled={acting}
+                              >
+                                Naplati
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-orders-action admin-orders-action-void"
+                                onClick={() => handleOrderAction(order.orderNumber, 'void')}
+                                disabled={acting}
+                              >
+                                Otkaži
+                              </button>
+                            </div>
+                          )}
+                          {order.paymentMethod === 'card' && order.status === 'captured' && (
+                            <button
+                              type="button"
+                              className="admin-orders-action admin-orders-action-void"
+                              onClick={() => handleOrderAction(order.orderNumber, 'refund')}
+                              disabled={acting}
+                            >
+                              Povraćaj
+                            </button>
+                          )}
+                        </td>
                         <td>
                           <button
                             type="button"

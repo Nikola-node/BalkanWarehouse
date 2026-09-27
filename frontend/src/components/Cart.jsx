@@ -124,6 +124,7 @@ function Cart() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   // Holds the raw typed text while a quantity field is being edited, keyed
   // by item id - kept separate from the cart's own quantity (a number) for
   // the same reason as the product page's quantity field: converting on
@@ -244,6 +245,11 @@ function Cart() {
     e.preventDefault()
     setError('')
 
+    if (!agreedToTerms) {
+      setError(t('agreeToTermsError'))
+      return
+    }
+
     let recaptchaToken = ''
     if (RECAPTCHA_SITE_KEY) {
       recaptchaToken = window.grecaptcha?.getResponse(widgetId.current) || ''
@@ -255,6 +261,33 @@ function Cart() {
 
     setSubmitting(true)
     try {
+      if (paymentMethod === 'card') {
+        const res = await fetch(`${BACKEND_URL}/api/orders/card-init`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items, customer: form, recaptchaToken, lang: getLang() }),
+        })
+        if (!res.ok) throw new Error('card init failed')
+        const { gatewayUrl, fields } = await res.json()
+        // Not a fetch - this navigates the whole browser away to NestPay's
+        // hosted payment page, exactly like the bank's own POST.txt example.
+        // The cart is intentionally left alone here (not cleared) in case
+        // the customer cancels or the payment fails and they come back.
+        const gatewayForm = document.createElement('form')
+        gatewayForm.method = 'POST'
+        gatewayForm.action = gatewayUrl
+        for (const [name, value] of Object.entries(fields)) {
+          const input = document.createElement('input')
+          input.type = 'hidden'
+          input.name = name
+          input.value = value
+          gatewayForm.appendChild(input)
+        }
+        document.body.appendChild(gatewayForm)
+        gatewayForm.submit()
+        return
+      }
+
       const res = await fetch(`${BACKEND_URL}/api/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -376,6 +409,7 @@ function Cart() {
           <span>{t('total')}</span>
           <span>{formatRsd(totalRsd + deliveryCostRsd)}</span>
         </div>
+        <p className="cart-vat-notice">{t('pricesInclVatNotice')}</p>
       </div>
 
       <h2 className="checkout-step-title">2. {t('deliveryMethod')}</h2>
@@ -481,6 +515,18 @@ function Cart() {
           )}
         </div>
       </div>
+
+      <label className="checkout-terms-agree">
+        <input
+          type="checkbox"
+          checked={agreedToTerms}
+          onChange={(e) => setAgreedToTerms(e.target.checked)}
+        />
+        {t('agreeToTermsPrefix')}{' '}
+        <Link to="/uslovi-kupovine" target="_blank" rel="noreferrer">
+          {t('termsLinkText')}
+        </Link>
+      </label>
 
       {error && <p className="checkout-error">{error}</p>}
 

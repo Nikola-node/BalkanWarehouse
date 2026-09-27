@@ -3,6 +3,27 @@
 // actual delivery pricing (weight-tier, not tshirtshop's flat rate) and
 // current payment options reflected instead of copied verbatim.
 const content = {
+  footerAbout: {
+    sr: [
+      {
+        body: [
+          'BalkanWarehouse je online prodavnica poslovnih i promotivnih proizvoda, namenjena firmama i pojedincima kojima je potrebna pouzdana ponuda kancelarijske opreme, tehnologije, tekstila i drugih artikala za svakodnevnu upotrebu, poklone ili promotivne svrhe.',
+          'Naš cilj je da kupcima obezbedimo jasan pregled širokog asortimana proizvoda, transparentne cene sa uračunatim PDV-om i pouzdanu isporuku na teritoriji Srbije.',
+          'BalkanWarehouse posluje u okviru privrednog društva MEDONI d.o.o., sa sedištem u Beogradu.',
+        ],
+      },
+    ],
+    en: [
+      {
+        body: [
+          'BalkanWarehouse is an online shop for business and promotional products, built for companies and individuals who need a reliable range of office supplies, technology, textiles, and other everyday, gift, or promotional items.',
+          "Our goal is to give customers a clear view of a wide product range, transparent prices that already include VAT, and reliable delivery across Serbia.",
+          'BalkanWarehouse operates under the company MEDONI d.o.o., based in Belgrade.',
+        ],
+      },
+    ],
+  },
+
   footerTerms: {
     sr: [
       {

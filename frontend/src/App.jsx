@@ -9,6 +9,7 @@ import LanguageSwitcher from './components/LanguageSwitcher'
 import Footer from './components/Footer'
 import LegalPage from './components/LegalPage'
 import Contact from './components/Contact'
+import OrderResult from './components/OrderResult'
 import Admin from './components/Admin'
 import { useCart } from './CartContext'
 import { useCurrency } from './CurrencyContext'
@@ -215,6 +216,8 @@ function App() {
           <Route path="/proizvodi" element={<ProductGrid />} />
           <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
+          <Route path="/porudzbina/uspesna" element={<OrderResult success />} />
+          <Route path="/porudzbina/neuspesna" element={<OrderResult success={false} />} />
           <Route path="/o-nama" element={<LegalPage titleKey="footerAbout" />} />
           <Route path="/uslovi-kupovine" element={<LegalPage titleKey="footerTerms" />} />
           <Route path="/dostava" element={<LegalPage titleKey="footerDelivery" />} />

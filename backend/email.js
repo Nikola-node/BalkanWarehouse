@@ -51,6 +51,16 @@ const STRINGS = {
     itemsCost: 'Cena artikala:',
     deliveryCost: 'Troškovi isporuke:',
     total: 'Ukupno:',
+    paymentApproved: 'Uspešno ste izvršili plaćanje – račun Vaše platne kartice je zadužen.',
+    paymentDeclined: 'Plaćanje neuspešno – račun Vaše platne kartice nije zadužen.',
+    transactionInfo: 'Podaci o transakciji:',
+    transactionOid: 'Broj narudžbine (order ID)',
+    authCode: 'Autorizacioni kod',
+    transId: 'ID transakcije',
+    response: 'Status transakcije',
+    procReturnCode: 'Kod statusa transakcije',
+    mdStatus: 'Statusni kod 3D transakcije',
+    transactionDate: 'Datum transakcije',
     locale: 'sr-RS',
   },
   en: {
@@ -86,6 +96,16 @@ const STRINGS = {
     itemsCost: 'Items cost:',
     deliveryCost: 'Delivery cost:',
     total: 'Total:',
+    paymentApproved: 'Your payment was successful – your card account has been charged.',
+    paymentDeclined: 'Payment unsuccessful – your card account has not been charged.',
+    transactionInfo: 'Transaction details:',
+    transactionOid: 'Order ID',
+    authCode: 'Authorization code',
+    transId: 'Transaction ID',
+    response: 'Payment status',
+    procReturnCode: 'Transaction status code',
+    mdStatus: '3D transaction status code',
+    transactionDate: 'Transaction date',
     locale: 'en-US',
   },
 };
@@ -96,14 +116,15 @@ export function generateOrderNumber() {
 }
 
 // `amountEur` is always the EUR figure the site actually stores - `rate`
-// (1 EUR in RSD) converts it for display here, rounded to the whole dinar
-// since RSD has no smaller unit in practice.
+// (1 EUR in RSD) converts it for display here, rounded to the para (RSD's
+// smallest unit) rather than the whole dinar - card-payment standards
+// require amounts be shown down to the smallest currency unit.
 function toRsd(amountEur, rate) {
-  return Math.round(Number(amountEur) * rate);
+  return Math.round(Number(amountEur) * rate * 100) / 100;
 }
 
 function formatRsd(rsdAmount, locale) {
-  return `${rsdAmount.toLocaleString(locale)} RSD`;
+  return `${rsdAmount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`;
 }
 
 function infoTable(rows) {
@@ -121,7 +142,31 @@ function infoTable(rows) {
     </table>`;
 }
 
-function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate, deliveryCostRsd }, lang) {
+// The bank's card-payment standard requires this exact block (2.7): a clear
+// approved/declined statement plus the specific NestPay transaction fields,
+// shown to the customer regardless of outcome - present only once a card
+// payment has actually resolved (order.payment is set from the okUrl/failUrl
+// callback), never for cash orders or a still-pending card order.
+function paymentStatusBlock(payment, t) {
+  if (!payment) return '';
+  const approved = payment.response === 'Approved';
+  return `
+    <div style="margin-bottom: 20px; padding: 12px 16px; border-radius: 6px; background: ${approved ? '#eaf7ea' : '#fdeaea'}; color: ${approved ? '#1a7a1a' : '#b00020'}; font-weight: bold;">
+      ${approved ? t.paymentApproved : t.paymentDeclined}
+    </div>
+    <h3 style="margin-bottom: 8px;">${t.transactionInfo}</h3>
+    ${infoTable([
+      [t.transactionOid, payment.oid],
+      [t.authCode, payment.authCode],
+      [t.transId, payment.transId],
+      [t.response, payment.response],
+      [t.procReturnCode, payment.procReturnCode],
+      [t.mdStatus, payment.mdStatus],
+      [t.transactionDate, payment.transactionDate],
+    ])}`;
+}
+
+function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate, deliveryCostRsd, payment }, lang) {
   const t = STRINGS[lang] || STRINGS.sr;
   const paymentLabels = { card: t.payByCard, cash: t.payByCash };
 
@@ -152,6 +197,7 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
 
   return `
   <div style="font-family: Arial, sans-serif; font-size: 14px; color: #111;">
+    ${paymentStatusBlock(payment, t)}
     ${infoTable([
       [t.orderNumber, orderNumber],
       [t.orderDate, createdAt.toLocaleString(t.locale)],

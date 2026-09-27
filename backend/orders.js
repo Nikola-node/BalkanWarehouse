@@ -37,3 +37,21 @@ export function removeOrder(orderNumber) {
   persist();
   return getOrders();
 }
+
+export function getOrder(orderNumber) {
+  return cachedOrders.find((o) => o.orderNumber === orderNumber) || null;
+}
+
+// Used once a card payment's result comes back from NestPay - merges the
+// given fields (status, the gateway's response parameters, etc.) into the
+// pending order created when the customer was redirected to pay.
+export function updateOrder(orderNumber, updates) {
+  let updated = null;
+  cachedOrders = cachedOrders.map((o) => {
+    if (o.orderNumber !== orderNumber) return o;
+    updated = { ...o, ...updates };
+    return updated;
+  });
+  persist();
+  return updated;
+}

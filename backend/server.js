@@ -12,7 +12,8 @@ import { getSettings, updateSettings } from './settings.js';
 import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
 import { getAds, addAd, removeAd, updateAdLink, AD_IMAGES_DIR } from './ads.js';
-import { getOrders, addOrder, removeOrder } from './orders.js';
+import { getOrders, addOrder, removeOrder, getOrder, updateOrder } from './orders.js';
+import { buildPaymentFields, verifyResponseHash, capturePayment, voidPayment, refundPayment } from './nestpay.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -72,6 +73,53 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
 
 app.delete('/api/admin/orders/:orderNumber', requireAdmin, (req, res) => {
   res.json({ items: removeOrder(req.params.orderNumber) });
+});
+
+// Only meaningful for a card order still sitting at "paid" (i.e. preAuth'd/
+// reserved, per the DMS flow) - settles the actual charge, meant to be
+// clicked once the order genuinely ships, never before (2.4 of the bank's
+// standards doc: capture can't happen before the goods are shipped).
+app.post('/api/admin/orders/:orderNumber/capture', requireAdmin, async (req, res) => {
+  const order = getOrder(req.params.orderNumber);
+  if (!order || order.paymentMethod !== 'card' || order.status !== 'paid') {
+    return res.status(400).json({ error: 'Order is not capturable' });
+  }
+  const result = await capturePayment(order.orderNumber);
+  if (result.response !== 'Approved') {
+    return res.status(502).json({ error: result.errMsg || 'Capture failed', result });
+  }
+  const updated = updateOrder(order.orderNumber, { status: 'captured', capture: result });
+  res.json({ items: getOrders(), order: updated });
+});
+
+// Releases a reservation without charging the customer - for an order
+// that's cancelled before it ships.
+app.post('/api/admin/orders/:orderNumber/void', requireAdmin, async (req, res) => {
+  const order = getOrder(req.params.orderNumber);
+  if (!order || order.paymentMethod !== 'card' || order.status !== 'paid') {
+    return res.status(400).json({ error: 'Order is not voidable' });
+  }
+  const result = await voidPayment(order.orderNumber);
+  if (result.response !== 'Approved') {
+    return res.status(502).json({ error: result.errMsg || 'Void failed', result });
+  }
+  const updated = updateOrder(order.orderNumber, { status: 'voided', void: result });
+  res.json({ items: getOrders(), order: updated });
+});
+
+// Only meaningful once an order has actually been captured - reverses a
+// charge that already went through.
+app.post('/api/admin/orders/:orderNumber/refund', requireAdmin, async (req, res) => {
+  const order = getOrder(req.params.orderNumber);
+  if (!order || order.paymentMethod !== 'card' || order.status !== 'captured') {
+    return res.status(400).json({ error: 'Order is not refundable' });
+  }
+  const result = await refundPayment(order.orderNumber);
+  if (result.response !== 'Approved') {
+    return res.status(502).json({ error: result.errMsg || 'Refund failed', result });
+  }
+  const updated = updateOrder(order.orderNumber, { status: 'refunded', refund: result });
+  res.json({ items: getOrders(), order: updated });
 });
 
 // The extension a saved ad image gets is picked from this map, never taken
@@ -410,6 +458,127 @@ app.post('/api/orders', async (req, res) => {
 
   res.json({ ok: true, orderNumber: order.orderNumber });
 });
+
+// Card orders don't get finalized/emailed here like cash ones - this only
+// creates a *pending* order and hands back the fields (with a server-signed
+// hash) needed to redirect the browser to NestPay's own hosted payment page.
+// The order is only actually confirmed once NestPay calls back to
+// /api/nestpay/success or /api/nestpay/fail below.
+app.post('/api/orders/card-init', async (req, res) => {
+  const { items, customer, recaptchaToken, lang } = req.body || {};
+
+  const humanVerified = await verifyRecaptcha(recaptchaToken);
+  if (!humanVerified) {
+    return res.status(400).json({ error: 'Captcha verification failed' });
+  }
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'No items in order' });
+  }
+
+  const result = verifyItems(items);
+  if (!result) {
+    return res.status(400).json({ error: 'Invalid item in order' });
+  }
+  const { verifiedItems, totalWeightKg } = result;
+  const itemsTotal = verifiedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryCost = getDeliveryCost(totalWeightKg);
+
+  const eurToRsdRate = getSettings().eurToRsdRate;
+  // Same per-line-then-sum rounding the cart and emails use, so the amount
+  // actually charged matches the total the customer saw to the para.
+  const itemsCostRsd = verifiedItems.reduce(
+    (sum, item) => sum + (Math.round(item.price * eurToRsdRate * 100) / 100) * item.quantity,
+    0,
+  );
+  const amountRsd = (itemsCostRsd + deliveryCost).toFixed(2);
+
+  const orderNumber = generateOrderNumber();
+  const order = {
+    orderNumber,
+    createdAt: new Date(),
+    items: verifiedItems,
+    customer,
+    paymentMethod: 'card',
+    total: itemsTotal,
+    deliveryCostRsd: deliveryCost,
+    customerLang: lang === 'en' ? 'en' : 'sr',
+    status: 'pending',
+  };
+
+  console.log('New pending card order:', JSON.stringify(order, null, 2));
+  addOrder(order);
+
+  const publicBackendUrl = process.env.PUBLIC_BACKEND_URL || `http://localhost:${PORT}`;
+  const fields = buildPaymentFields({
+    clientId: process.env.NESTPAY_TEST_CLIENT_ID,
+    oid: orderNumber,
+    amount: amountRsd,
+    okUrl: `${publicBackendUrl}/api/nestpay/success`,
+    failUrl: `${publicBackendUrl}/api/nestpay/fail`,
+    currency: '941',
+    lang: order.customerLang,
+    storeKey: process.env.NESTPAY_TEST_STORE_KEY,
+  });
+
+  res.json({ gatewayUrl: process.env.NESTPAY_TEST_GATEWAY_URL, fields });
+});
+
+// NestPay POSTs the customer's browser here after they pay (or cancel) -
+// both okUrl and failUrl land on the same handler since the outcome is read
+// from the Response field itself, not from which URL was hit. Needs its own
+// urlencoded parser since NestPay posts a plain HTML form, not JSON.
+async function handleNestpayCallback(req, res) {
+  const body = req.body || {};
+  const oid = body.oid || body.ReturnOid;
+  const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+  const failRedirect = () => res.redirect(`${frontendOrigin}/porudzbina/neuspesna?order=${encodeURIComponent(oid || '')}`);
+
+  // `Response` is only present once a transaction actually reaches the
+  // authorization step - if 3D authentication itself fails outright (wrong
+  // OTP, ACS error, mdStatus "0"/"5-8"), NestPay posts back oid/clientid/a
+  // valid hash but no Response at all. That's still a legitimate, verifiable
+  // callback for a failed payment, not something to discard as malformed.
+  if (!oid || !body.clientid) {
+    console.error('NestPay callback: missing required parameters', body);
+    return failRedirect();
+  }
+
+  if (body.clientid !== process.env.NESTPAY_TEST_CLIENT_ID) {
+    console.error('NestPay callback: client id mismatch');
+    return failRedirect();
+  }
+
+  if (!verifyResponseHash(body, process.env.NESTPAY_TEST_STORE_KEY)) {
+    console.error('NestPay callback: hash verification failed for order', oid);
+    return failRedirect();
+  }
+
+  const order = getOrder(oid);
+  if (!order) {
+    console.error('NestPay callback: unknown order', oid);
+    return failRedirect();
+  }
+
+  const approved = body.Response === 'Approved';
+  const payment = {
+    oid,
+    authCode: body.AuthCode || '',
+    transId: body.TransId || '',
+    response: body.Response || 'Error',
+    procReturnCode: body.ProcReturnCode || '',
+    mdStatus: body.mdStatus || '',
+    transactionDate: body['EXTRA.TRXDATE'] || '',
+  };
+
+  const updated = updateOrder(oid, { status: approved ? 'paid' : 'failed', payment });
+  await sendOrderEmails({ ...updated, eurToRsdRate: getSettings().eurToRsdRate });
+
+  res.redirect(`${frontendOrigin}/porudzbina/${approved ? 'uspesna' : 'neuspesna'}?order=${encodeURIComponent(oid)}`);
+}
+
+app.post('/api/nestpay/success', express.urlencoded({ extended: true }), handleNestpayCallback);
+app.post('/api/nestpay/fail', express.urlencoded({ extended: true }), handleNestpayCallback);
 
 app.post('/api/contact', async (req, res) => {
   const { name, email, message, recaptchaToken } = req.body || {};
