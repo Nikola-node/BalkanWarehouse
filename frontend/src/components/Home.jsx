@@ -11,16 +11,17 @@ const NEWEST_INTERVAL_MS = 2000
 // the whole box, stacked directly on top of each other, and only its own
 // opacity toggles. No width/transform/percentage math of any kind is
 // involved, so there's nothing left for a sizing bug to hide in.
-function HeroCarousel() {
+function HeroCarousel({ variant = 'desktop' }) {
   const [ads, setAds] = useState([])
   const [index, setIndex] = useState(0)
+  const apiPath = variant === 'mobile' ? '/api/ads/mobile' : '/api/ads'
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/ads`)
+    fetch(`${BACKEND_URL}${apiPath}`)
       .then((res) => res.json())
       .then((data) => setAds(data.items))
       .catch(() => {})
-  }, [])
+  }, [apiPath])
 
   useEffect(() => {
     if (ads.length <= 1) return
@@ -39,7 +40,7 @@ function HeroCarousel() {
   }
 
   return (
-    <div className="hero-carousel">
+    <div className={`hero-carousel ${variant === 'mobile' ? 'hero-carousel-mobile' : ''}`}>
       {ads.length > 1 && (
         <button type="button" className="hero-arrow hero-arrow-left" onClick={prev} aria-label={t('heroPrevSlide')}>
           ‹
@@ -129,6 +130,7 @@ function CategoryGrid() {
 
   return (
     <section className="category-grid-section">
+      <h2>{t('categories')}</h2>
       <div className="category-grid">
         {items.map((cat) => (
           <Link key={cat.id} to={`/proizvodi?nodeId=${encodeURIComponent(cat.id)}`} className="category-grid-card">
@@ -146,7 +148,12 @@ function CategoryGrid() {
 function Home() {
   return (
     <div className="home-page">
-      <HeroCarousel />
+      <div className="hero-carousel-desktop-only">
+        <HeroCarousel variant="desktop" />
+      </div>
+      <div className="hero-carousel-mobile-only">
+        <HeroCarousel variant="mobile" />
+      </div>
       <NewestProducts />
       <CategoryGrid />
     </div>

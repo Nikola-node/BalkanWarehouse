@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
+import AdsManager from './AdsManager'
 
 const ORDER_STATUS_LABELS = {
   pending: 'Nova',
@@ -34,20 +35,6 @@ function Admin() {
   const [deletingOrderId, setDeletingOrderId] = useState('')
   const [actingOrderId, setActingOrderId] = useState('')
   const [actionError, setActionError] = useState('')
-
-  const [ads, setAds] = useState([])
-  const [loadingAds, setLoadingAds] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [previewUrl, setPreviewUrl] = useState('')
-  const [newAdLink, setNewAdLink] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [adError, setAdError] = useState('')
-  const [deletingId, setDeletingId] = useState('')
-  // Draft link text per ad id, kept separate from the saved `ads` list so
-  // typing doesn't need a round-trip to the server on every keystroke.
-  const [linkDrafts, setLinkDrafts] = useState({})
-  const [savingLinkId, setSavingLinkId] = useState('')
-  const fileInputRef = useRef(null)
 
   const recaptchaRef = useRef(null)
   const widgetId = useRef(null)
@@ -129,98 +116,6 @@ function Admin() {
       .finally(() => setLoadingOrders(false))
   }, [token, view, ordersLoaded])
 
-  // The list itself is public (it's exactly what the homepage banner
-  // already shows everyone), so this loads without needing the admin token
-  // - only adding/removing one requires it.
-  useEffect(() => {
-    if (!token) return
-    setLoadingAds(true)
-    fetch(`${BACKEND_URL}/api/ads`)
-      .then((res) => res.json())
-      .then((data) => {
-        setAds(data.items)
-        setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
-      })
-      .finally(() => setLoadingAds(false))
-  }, [token])
-
-  // Revokes the previous preview's object URL whenever a new file is picked
-  // (or this component unmounts) - otherwise each selection leaks the
-  // in-memory blob the browser created for the last one.
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [previewUrl])
-
-  function handleFileSelect(e) {
-    const file = e.target.files?.[0] || null
-    setAdError('')
-    setSelectedFile(file)
-    setPreviewUrl(file ? URL.createObjectURL(file) : '')
-  }
-
-  function clearSelectedFile() {
-    setSelectedFile(null)
-    setPreviewUrl('')
-    setNewAdLink('')
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  async function handleUploadAd() {
-    if (!selectedFile) return
-    setAdError('')
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('image', selectedFile)
-      formData.append('link', newAdLink.trim())
-      const res = await fetch(`${BACKEND_URL}/api/admin/ads`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-      if (res.status === 401) {
-        forceLogout()
-        return
-      }
-      const data = await res.json()
-      if (!res.ok) {
-        setAdError(data.error || 'Otpremanje nije uspelo.')
-        return
-      }
-      setAds(data.items)
-      setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
-      clearSelectedFile()
-    } catch {
-      setAdError('Otpremanje nije uspelo.')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  async function handleSaveLink(id) {
-    setSavingLinkId(id)
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/ads/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ link: (linkDrafts[id] || '').trim() }),
-      })
-      if (res.status === 401) {
-        forceLogout()
-        return
-      }
-      const data = await res.json()
-      if (res.ok) {
-        setAds(data.items)
-        setLinkDrafts(Object.fromEntries(data.items.map((ad) => [ad.id, ad.link || ''])))
-      }
-    } finally {
-      setSavingLinkId('')
-    }
-  }
-
   async function handleDeleteOrder(orderNumber) {
     if (!window.confirm(`Obrisati porudžbinu ${orderNumber}? Ovo se ne može poništiti.`)) return
     setDeletingOrderId(orderNumber)
@@ -269,25 +164,6 @@ function Admin() {
       setActionError(`${orderNumber}: Akcija nije uspela.`)
     } finally {
       setActingOrderId('')
-    }
-  }
-
-  async function handleDeleteAd(id) {
-    if (!window.confirm('Ukloniti ovu reklamu sa početne strane?')) return
-    setDeletingId(id)
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/ads/${encodeURIComponent(id)}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (res.status === 401) {
-        forceLogout()
-        return
-      }
-      const data = await res.json()
-      if (res.ok) setAds(data.items)
-    } finally {
-      setDeletingId('')
     }
   }
 
@@ -551,89 +427,23 @@ function Admin() {
         )}
       </div>
 
-      <div className="admin-card admin-ads-card">
-        <h2>Reklame</h2>
-        <p className="admin-hint">
-          Slike koje se prikazuju u baneru na početnoj strani. Preporučen format je oko 3:1 (npr.
-          1500×500px) - svaka slika se automatski iseče da popuni taj format, tako da nije potrebna
-          tačna veličina. Svaka slika može da vodi na neku stranicu sajta ili spoljni link kada se
-          klikne - npr. /proizvodi?nodeId=neka-kategorija, /product/123, ili puna adresa poput
-          https://...
-        </p>
+      <AdsManager
+        token={token}
+        forceLogout={forceLogout}
+        apiPath="/api/ads"
+        adminApiPath="/api/admin/ads"
+        title="Reklame (računar)"
+        hint="Slike koje se prikazuju u baneru na početnoj strani kad je sajt otvoren na računaru/tabletu. Preporučen format je oko 3:1 (npr. 1500×500px) - svaka slika se automatski iseče da popuni taj format, tako da nije potrebna tačna veličina. Svaka slika može da vodi na neku stranicu sajta ili spoljni link kada se klikne - npr. /proizvodi?nodeId=neka-kategorija, /product/123, ili puna adresa poput https://..."
+      />
 
-        {loadingAds ? (
-          <p>Učitavanje...</p>
-        ) : (
-          <ul className="admin-ads-list">
-            {ads.map((ad) => (
-              <li key={ad.id} className="admin-ads-item">
-                <img src={`${BACKEND_URL}${ad.url}`} alt="" />
-                <button
-                  type="button"
-                  className="admin-ads-remove"
-                  onClick={() => handleDeleteAd(ad.id)}
-                  disabled={deletingId === ad.id}
-                  aria-label="Ukloni"
-                >
-                  ×
-                </button>
-                <div className="admin-ads-link-row">
-                  <input
-                    type="text"
-                    className="admin-ads-link-input"
-                    placeholder="Link (opciono)"
-                    value={linkDrafts[ad.id] ?? ''}
-                    onChange={(e) => setLinkDrafts({ ...linkDrafts, [ad.id]: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    className="admin-ads-link-save"
-                    onClick={() => handleSaveLink(ad.id)}
-                    disabled={savingLinkId === ad.id || (linkDrafts[ad.id] ?? '') === (ad.link || '')}
-                  >
-                    {savingLinkId === ad.id ? '...' : 'Sačuvaj'}
-                  </button>
-                </div>
-              </li>
-            ))}
-            {ads.length === 0 && <p className="admin-hint">Trenutno nema reklama.</p>}
-          </ul>
-        )}
-
-        <label className="form-field">
-          <span className="form-field-label">Nova slika</span>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} />
-        </label>
-
-        {selectedFile && (
-          <label className="form-field">
-            <span className="form-field-label">Link (opciono)</span>
-            <input
-              type="text"
-              placeholder="/proizvodi?nodeId=... ili https://..."
-              value={newAdLink}
-              onChange={(e) => setNewAdLink(e.target.value)}
-            />
-          </label>
-        )}
-
-        {previewUrl && (
-          <div className="admin-ads-preview">
-            <img src={previewUrl} alt="" className="admin-ads-preview-image" />
-          </div>
-        )}
-
-        {adError && <p className="admin-error">{adError}</p>}
-
-        <button
-          type="button"
-          className="add-to-cart"
-          onClick={handleUploadAd}
-          disabled={!selectedFile || uploading}
-        >
-          {uploading ? 'Otpremanje...' : 'Otpremi sliku'}
-        </button>
-      </div>
+      <AdsManager
+        token={token}
+        forceLogout={forceLogout}
+        apiPath="/api/ads/mobile"
+        adminApiPath="/api/admin/ads/mobile"
+        title="Reklame (mobilni)"
+        hint="Posebne slike koje se prikazuju umesto gornjih kad je sajt otvoren na telefonu - koristan je uspravniji format (npr. 4:5, poput 1200×1500px) umesto širokog baneru za računar. Isti sistem linkova kao gore."
+      />
         </>
       )}
     </div>

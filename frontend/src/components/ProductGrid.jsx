@@ -20,6 +20,7 @@ function ProductGrid() {
   const minPrice = searchParams.get('minPrice') || ''
   const maxPrice = searchParams.get('maxPrice') || ''
   const inStock = searchParams.get('inStock') === '1'
+  const packageSize = searchParams.get('packageSize') || ''
   const page = Math.max(1, parseInt(searchParams.get('page'), 10) || 1)
 
   const [items, setItems] = useState([])
@@ -27,7 +28,14 @@ function ProductGrid() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState(null)
+  // Only ever matters on mobile - the "Filteri" pill next to the sort
+  // dropdown toggles it, and CSS keeps the filter panel always visible on
+  // desktop regardless of its value there.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const gridTopRef = useRef(null)
+
+  const activeFilterCount =
+    (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0) + (packageSize ? 1 : 0)
 
   useEffect(() => {
     setLoading(true)
@@ -37,6 +45,7 @@ function ProductGrid() {
     if (minPrice) params.set('minPrice', minPrice)
     if (maxPrice) params.set('maxPrice', maxPrice)
     if (inStock) params.set('inStock', '1')
+    if (packageSize) params.set('packageSize', packageSize)
     fetch(`${BACKEND_URL}/api/products?${params}`)
       .then((res) => res.json())
       .then((data) => {
@@ -46,7 +55,7 @@ function ProductGrid() {
         setFilter(data.filter)
         setLoading(false)
       })
-  }, [nodeId, q, sort, minPrice, maxPrice, inStock, page])
+  }, [nodeId, q, sort, minPrice, maxPrice, inStock, packageSize, page])
 
   // Remembers how far down this exact page (same filters/page number) was
   // scrolled, so clicking a product then hitting the browser back button
@@ -80,6 +89,7 @@ function ProductGrid() {
     if (minPrice) next.minPrice = minPrice
     if (maxPrice) next.maxPrice = maxPrice
     if (inStock) next.inStock = '1'
+    if (packageSize) next.packageSize = packageSize
     return next
   }
 
@@ -123,7 +133,24 @@ function ProductGrid() {
         </button>
       )}
 
-      <SortBar sort={sort} onChange={updateFilters} />
+      <div className="product-toolbar">
+        <button
+          type="button"
+          className="mobile-filter-toggle"
+          onClick={() => setMobileFiltersOpen((open) => !open)}
+        >
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+            <line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" strokeWidth="1.6" />
+            <circle cx="12" cy="6" r="2" fill="currentColor" />
+            <line x1="3" y1="14" x2="17" y2="14" stroke="currentColor" strokeWidth="1.6" />
+            <circle cx="8" cy="14" r="2" fill="currentColor" />
+          </svg>
+          {t('filters')}
+          {activeFilterCount > 0 && <span className="mobile-filter-toggle-count">{activeFilterCount}</span>}
+        </button>
+
+        <SortBar sort={sort} onChange={updateFilters} />
+      </div>
 
       <div ref={gridTopRef} className="product-page">
         <FilterSidebar
@@ -131,6 +158,8 @@ function ProductGrid() {
           minPrice={minPrice}
           maxPrice={maxPrice}
           inStock={inStock}
+          packageSize={packageSize}
+          mobileOpen={mobileFiltersOpen}
           onChange={updateFilters}
         />
 

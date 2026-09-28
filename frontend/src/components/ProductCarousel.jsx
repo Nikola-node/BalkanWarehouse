@@ -12,7 +12,6 @@ const CARD_GAP = 20
 // overlaid the cards instead of sitting next to them.
 function visibleCardsFor(width, maxVisible) {
   if (width === 0) return maxVisible // not measured yet - assume desktop, corrected once real width comes in
-  if (width < 380) return 1
   if (width < 600) return 2
   if (width < 880) return 3
   if (width < 1160) return Math.min(4, maxVisible)

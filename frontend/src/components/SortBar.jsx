@@ -15,7 +15,7 @@ function SortBar({ sort, onChange }) {
   return (
     <div className="sort-bar">
       <label className="sort-bar-field">
-        {t('sortBy')}
+        <span className="sort-bar-label-text">{t('sortBy')}</span>
         <select value={sort} onChange={(e) => onChange({ sort: e.target.value })}>
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>

@@ -10,6 +10,7 @@ let cachedGroupedProducts = { sr: [], en: [] };
 let cachedColors = { sr: [], en: [] };
 let cachedShades = { sr: [], en: [] };
 let cachedCategoryTree = [];
+let cachedPackageSizes = [];
 let cachedStockByProduct = new Map();
 let lastRefreshedAt = null;
 
@@ -51,6 +52,11 @@ function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
         imageHover: info?.imageHover || null,
         stockQty,
         colorCodes: new Set(p.Color ? [p.Color] : []),
+        // How many pieces come per package (Promobox's `Carton` field) -
+        // shown to the customer as "Pakovanje" on the spec tab. Kept as a
+        // set since, rarely, different color/size variants of the same
+        // model ship in different package sizes.
+        packageSizes: new Set(p.Carton ? [p.Carton] : []),
         createdAt: p.Created,
       };
       group.categoryPath = classify({
@@ -65,17 +71,18 @@ function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
       existing.variantIds.push(p.Id);
       existing.stockQty += stockQty;
       if (p.Color) existing.colorCodes.add(p.Color);
+      if (p.Carton) existing.packageSizes.add(p.Carton);
       if (p.Created < existing.createdAt) existing.createdAt = p.Created;
     }
   }
 
   return Array.from(groups.values()).map((group) => {
-    const { colorCodes, ...rest } = group;
+    const { colorCodes, packageSizes, ...rest } = group;
     const colors = [...colorCodes]
       .map((code) => colorInfo.get(code))
       .filter(Boolean)
       .map((c) => ({ id: c.Id, name: c.Name, htmlColor: c.HtmlColor }));
-    return { ...rest, colors, inStock: rest.stockQty > 0 };
+    return { ...rest, colors, packageSizes: [...packageSizes].sort((a, b) => a - b), inStock: rest.stockQty > 0 };
   });
 }
 
@@ -137,7 +144,7 @@ const SORTERS = {
   stock_desc: (a, b) => b.stockQty - a.stockQty,
 };
 
-function applyBaseFilters(products, { nodeId, q, minPrice, maxPrice, inStock } = {}) {
+function applyBaseFilters(products, { nodeId, q, minPrice, maxPrice, inStock, packageSize } = {}) {
   if (nodeId) {
     const nodePath = nodeId.split('/');
     products = products.filter((p) => nodePath.every((segment, i) => p.categoryPath[i] === segment));
@@ -162,11 +169,15 @@ function applyBaseFilters(products, { nodeId, q, minPrice, maxPrice, inStock } =
     products = products.filter((p) => p.inStock);
   }
 
+  if (packageSize != null) {
+    products = products.filter((p) => p.packageSizes.includes(packageSize));
+  }
+
   return products;
 }
 
-export function getGroupedProducts({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock, sort } = {}) {
-  const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock });
+export function getGroupedProducts({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock, packageSize, sort } = {}) {
+  const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock, packageSize });
 
   const sorter = SORTERS[sort] || SORTERS.date_desc;
   return [...products].sort(sorter);
@@ -174,6 +185,27 @@ export function getGroupedProducts({ lang = 'sr', nodeId, q, minPrice, maxPrice,
 
 export function getCategoryTree() {
   return cachedCategoryTree;
+}
+
+// Distinct package sizes (pieces per package) across the whole catalog, each
+// with how many products carry it - lets the filter sidebar list every size
+// a customer could actually pick, like buildCategoryTree does for
+// categories. Built once from the Serbian grouped list since a package size
+// is a plain number, not language-dependent.
+function buildPackageSizeOptions(groupedProducts) {
+  const counts = new Map();
+  for (const p of groupedProducts) {
+    for (const size of p.packageSizes) {
+      counts.set(size, (counts.get(size) || 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([size, count]) => ({ size, count }))
+    .sort((a, b) => a.size - b.size);
+}
+
+export function getPackageSizes() {
+  return cachedPackageSizes;
 }
 
 // The newest products overall tend to cluster in whichever category
@@ -329,6 +361,7 @@ export async function refreshProducts() {
     }
 
     cachedCategoryTree = buildCategoryTree(cachedGroupedProducts.sr);
+    cachedPackageSizes = buildPackageSizeOptions(cachedGroupedProducts.sr);
 
     const unmapped = getUnmappedCombos();
     if (unmapped.length > 0) {

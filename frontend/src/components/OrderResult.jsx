@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import Swal from 'sweetalert2'
 import { useCart } from '../CartContext'
 import { t } from '../i18n'
 
@@ -13,7 +14,17 @@ function OrderResult({ success }) {
   const { clearCart } = useCart()
 
   useEffect(() => {
-    if (success) clearCart()
+    if (success) {
+      clearCart()
+      Swal.fire({
+        icon: 'info',
+        title: t('printNoticeTitle'),
+        text: t('printNoticeBody'),
+        showCloseButton: true,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#111111',
+      })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [success])
 

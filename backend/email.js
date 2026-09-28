@@ -50,6 +50,7 @@ const STRINGS = {
     lineTotal: 'Ukupna cena',
     itemsCost: 'Cena artikala:',
     deliveryCost: 'Troškovi isporuke:',
+    pdv: 'PDV (20%, uključen u cenu):',
     total: 'Ukupno:',
     paymentApproved: 'Uspešno ste izvršili plaćanje – račun Vaše platne kartice je zadužen.',
     paymentDeclined: 'Plaćanje neuspešno – račun Vaše platne kartice nije zadužen.',
@@ -95,6 +96,7 @@ const STRINGS = {
     lineTotal: 'Line total',
     itemsCost: 'Items cost:',
     deliveryCost: 'Delivery cost:',
+    pdv: 'VAT (20%, included in price):',
     total: 'Total:',
     paymentApproved: 'Your payment was successful – your card account has been charged.',
     paymentDeclined: 'Payment unsuccessful – your card account has not been charged.',
@@ -252,6 +254,10 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
       <tr>
         <td style="padding: 3px 12px 3px 0; color: #555;">${t.deliveryCost}</td>
         <td style="padding: 3px 0;">${formatRsd(deliveryCostRsd, t.locale)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 3px 12px 3px 0; color: #555;">${t.pdv}</td>
+        <td style="padding: 3px 0; color: #555;">${formatRsd(Math.round(((itemsCostRsd + deliveryCostRsd) - (itemsCostRsd + deliveryCostRsd) / 1.2) * 100) / 100, t.locale)}</td>
       </tr>
       <tr>
         <td style="padding: 6px 12px 3px 0; font-weight: bold;">${t.total}</td>

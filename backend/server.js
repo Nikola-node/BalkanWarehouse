@@ -4,7 +4,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { getGroupedProducts, getCategoryTree, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails, sendContactEmail } from './email.js';
@@ -93,11 +93,16 @@ app.post('/api/admin/orders/:orderNumber/capture', requireAdmin, async (req, res
 });
 
 // Releases a reservation without charging the customer - for an order
-// that's cancelled before it ships.
+// that's cancelled before it ships. The bank only accepts a Void within the
+// same business day as the original PreAuth (the next day it's already
+// settled into their clearing batch, so only a refund/Credit can undo it).
 app.post('/api/admin/orders/:orderNumber/void', requireAdmin, async (req, res) => {
   const order = getOrder(req.params.orderNumber);
   if (!order || order.paymentMethod !== 'card' || order.status !== 'paid') {
     return res.status(400).json({ error: 'Order is not voidable' });
+  }
+  if (new Date(order.createdAt).toDateString() !== new Date().toDateString()) {
+    return res.status(400).json({ error: 'Void must be done the same business day as the authorization' });
   }
   const result = await voidPayment(order.orderNumber);
   if (result.response !== 'Approved') {
@@ -149,16 +154,21 @@ const adUpload = multer({
   },
 });
 
-function adsResponse() {
+function adsResponse(variant) {
   return {
-    items: getAds().map((ad) => ({ id: ad.filename, url: `/uploads/ads/${ad.filename}`, link: ad.link || '' })),
+    items: getAds(variant).map((ad) => ({ id: ad.filename, url: `/uploads/ads/${ad.filename}`, link: ad.link || '' })),
   };
 }
 
 // Public - the homepage banner carousel reads whatever ads are currently
-// live, no login needed to just view the site.
+// live, no login needed to just view the site. 'desktop' is the original
+// banner; 'mobile' is a separate image set shown instead on phones.
 app.get('/api/ads', (req, res) => {
-  res.json(adsResponse());
+  res.json(adsResponse('desktop'));
+});
+
+app.get('/api/ads/mobile', (req, res) => {
+  res.json(adsResponse('mobile'));
 });
 
 app.post('/api/admin/ads', requireAdmin, (req, res) => {
@@ -169,19 +179,42 @@ app.post('/api/admin/ads', requireAdmin, (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
-    addAd(req.file.filename, req.body.link || '');
-    res.json(adsResponse());
+    addAd('desktop', req.file.filename, req.body.link || '');
+    res.json(adsResponse('desktop'));
   });
 });
 
 app.put('/api/admin/ads/:id', requireAdmin, (req, res) => {
-  updateAdLink(req.params.id, req.body?.link || '');
-  res.json(adsResponse());
+  updateAdLink('desktop', req.params.id, req.body?.link || '');
+  res.json(adsResponse('desktop'));
 });
 
 app.delete('/api/admin/ads/:id', requireAdmin, (req, res) => {
-  removeAd(req.params.id);
-  res.json(adsResponse());
+  removeAd('desktop', req.params.id);
+  res.json(adsResponse('desktop'));
+});
+
+app.post('/api/admin/ads/mobile', requireAdmin, (req, res) => {
+  adUpload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+    addAd('mobile', req.file.filename, req.body.link || '');
+    res.json(adsResponse('mobile'));
+  });
+});
+
+app.put('/api/admin/ads/mobile/:id', requireAdmin, (req, res) => {
+  updateAdLink('mobile', req.params.id, req.body?.link || '');
+  res.json(adsResponse('mobile'));
+});
+
+app.delete('/api/admin/ads/mobile/:id', requireAdmin, (req, res) => {
+  removeAd('mobile', req.params.id);
+  res.json(adsResponse('mobile'));
 });
 
 app.get('/api/categories', (req, res) => {
@@ -189,6 +222,13 @@ app.get('/api/categories', (req, res) => {
   const localize = (nodes) =>
     nodes.map((n) => ({ ...n, name: lang === 'en' ? n.nameEn : n.name, children: n.children && localize(n.children) }));
   res.json(localize(getCategoryTree()));
+});
+
+// Every distinct package size (pieces per package) across the catalog, for
+// the "Veličina pakovanja" filter - independent of any other active filter,
+// same as /api/categories.
+app.get('/api/package-sizes', (req, res) => {
+  res.json({ items: getPackageSizes() });
 });
 
 app.get('/api/products/featured', (req, res) => {
@@ -227,9 +267,10 @@ app.get('/api/products', (req, res) => {
   const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined;
   const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined;
   const inStock = req.query.inStock === '1';
+  const packageSize = req.query.packageSize !== undefined ? Number(req.query.packageSize) : undefined;
   const sort = req.query.sort || undefined;
 
-  const all = getGroupedProducts({ lang, nodeId, q, minPrice, maxPrice, inStock, sort });
+  const all = getGroupedProducts({ lang, nodeId, q, minPrice, maxPrice, inStock, packageSize, sort });
 
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const limit = Math.min(100, parseInt(req.query.limit, 10) || 24);
@@ -464,8 +505,23 @@ app.post('/api/orders', async (req, res) => {
 // hash) needed to redirect the browser to NestPay's own hosted payment page.
 // The order is only actually confirmed once NestPay calls back to
 // /api/nestpay/success or /api/nestpay/fail below.
+// Installment count is merchant-set (not chosen by the cardholder on the
+// bank's page) - only these counts are offered to the customer, matching
+// what the bank's test matrix (TC35) and typical DinaCard/local-card
+// installment plans actually support.
+const ALLOWED_INSTALLMENTS = [2, 3, 4, 6, 9, 12];
+
 app.post('/api/orders/card-init', async (req, res) => {
-  const { items, customer, recaptchaToken, lang } = req.body || {};
+  const { items, customer, recaptchaToken, lang, installments } = req.body || {};
+
+  let installment = '';
+  if (installments !== undefined && installments !== null && installments !== '') {
+    const n = Number(installments);
+    if (!ALLOWED_INSTALLMENTS.includes(n)) {
+      return res.status(400).json({ error: 'Invalid installment count' });
+    }
+    installment = String(n);
+  }
 
   const humanVerified = await verifyRecaptcha(recaptchaToken);
   if (!humanVerified) {
@@ -504,6 +560,7 @@ app.post('/api/orders/card-init', async (req, res) => {
     deliveryCostRsd: deliveryCost,
     customerLang: lang === 'en' ? 'en' : 'sr',
     status: 'pending',
+    installment,
   };
 
   console.log('New pending card order:', JSON.stringify(order, null, 2));
@@ -519,6 +576,7 @@ app.post('/api/orders/card-init', async (req, res) => {
     currency: '941',
     lang: order.customerLang,
     storeKey: process.env.NESTPAY_TEST_STORE_KEY,
+    installment,
   });
 
   res.json({ gatewayUrl: process.env.NESTPAY_TEST_GATEWAY_URL, fields });

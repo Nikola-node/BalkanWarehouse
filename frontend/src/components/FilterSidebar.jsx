@@ -2,20 +2,26 @@ import { useEffect, useState } from 'react'
 import { t } from '../i18n'
 import { useCurrency } from '../CurrencyContext'
 import CategoryFilterTree from './CategoryFilterTree'
+import PackageSizeFilter from './PackageSizeFilter'
 
 // minPrice/maxPrice arrive from (and are sent back to) the URL/backend in
 // EUR - Promobox prices are compared in EUR - but the customer should only
 // ever see and type RSD, so every value crossing that boundary gets
 // converted right here rather than the backend needing to know about RSD.
-function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, onChange }) {
+// `mobileOpen` is owned by ProductGrid (a "Filteri" pill next to the sort
+// dropdown toggles it) since on mobile that pill sits outside this
+// component entirely - only mattering on mobile, CSS keeps the panel always
+// visible on desktop regardless of its value.
+function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, packageSize = '', mobileOpen, onChange }) {
   const { eurFromRsd, rsdFromEur } = useCurrency()
   const [minInput, setMinInput] = useState(minPrice ? Math.round(rsdFromEur(minPrice)) : minPrice)
   const [maxInput, setMaxInput] = useState(maxPrice ? Math.round(rsdFromEur(maxPrice)) : maxPrice)
 
-  const activeFilterCount = (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0)
+  const activeFilterCount =
+    (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0) + (packageSize ? 1 : 0)
 
   function resetAll() {
-    onChange({ nodeId: '', minPrice: '', maxPrice: '', inStock: false })
+    onChange({ nodeId: '', minPrice: '', maxPrice: '', inStock: false, packageSize: '' })
   }
 
   useEffect(() => {
@@ -36,7 +42,7 @@ function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, onChange }) {
   }
 
   return (
-    <aside className="filter-sidebar">
+    <aside className={`filter-sidebar ${mobileOpen ? 'mobile-open' : ''}`}>
       <div className="filter-sidebar-header">
         <h3>{t('filters')}</h3>
         {activeFilterCount > 0 && (
@@ -79,6 +85,8 @@ function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, onChange }) {
           {t('inStockOnly')}
         </label>
       </div>
+
+      <PackageSizeFilter packageSize={packageSize} onSelect={(size) => onChange({ packageSize: size })} />
     </aside>
   )
 }

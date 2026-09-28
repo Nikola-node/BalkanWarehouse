@@ -24,9 +24,9 @@ export function buildPaymentFields({
   currency,
   lang,
   storeKey,
+  installment = '',
 }) {
   const trantype = 'PreAuth'; // DMS - required for goods only usable after delivery (see 2.4 of the bank's standards doc)
-  const installment = '';
   const rnd = crypto.randomBytes(16).toString('hex');
 
   // Exact field order from the bank's own hash formula:

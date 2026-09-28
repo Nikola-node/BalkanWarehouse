@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
 import Home from './components/Home'
 import ProductGrid from './components/ProductGrid'
 import ProductDetail from './components/ProductDetail'
@@ -11,6 +11,7 @@ import LegalPage from './components/LegalPage'
 import Contact from './components/Contact'
 import OrderResult from './components/OrderResult'
 import Admin from './components/Admin'
+import NotFound from './components/NotFound'
 import { useCart } from './CartContext'
 import { useCurrency } from './CurrencyContext'
 import { t, getLang } from './i18n'
@@ -173,9 +174,27 @@ function SearchBar() {
   )
 }
 
+// A route change is a client-side render, not a real page load, so the
+// browser just leaves the window scrolled wherever it already was -
+// clicking a product from partway down the grid otherwise lands on the
+// product page already scrolled down. Only resets on a fresh navigation
+// (PUSH/REPLACE): back/forward (POP) is left alone so ProductGrid's own
+// scroll-position restore for the grid it came from still works.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  const navigationType = useNavigationType()
+
+  useEffect(() => {
+    if (navigationType !== 'POP') window.scrollTo(0, 0)
+  }, [pathname, navigationType])
+
+  return null
+}
+
 function App() {
   return (
     <div>
+      <ScrollToTop />
       <header className="site-header">
         <Link to="/" className="site-logo">
           BalkanWarehouse
@@ -227,6 +246,7 @@ function App() {
           <Route path="/povracaj-robe" element={<LegalPage titleKey="footerReturns" />} />
           <Route path="/kontakt" element={<Contact />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
 

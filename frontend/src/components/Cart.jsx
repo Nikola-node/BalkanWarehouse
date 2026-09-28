@@ -119,7 +119,8 @@ function Cart() {
   // price - never guessed client-side, so it can't drift from what the
   // order will actually be charged.
   const [deliveryCostRsd, setDeliveryCostRsd] = useState(0)
-  const [paymentMethod, setPaymentMethod] = useState('card')
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [installments, setInstallments] = useState('')
   const [form, setForm] = useState(initialForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -265,7 +266,7 @@ function Cart() {
         const res = await fetch(`${BACKEND_URL}/api/orders/card-init`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items, customer: form, recaptchaToken, lang: getLang() }),
+          body: JSON.stringify({ items, customer: form, recaptchaToken, lang: getLang(), installments }),
         })
         if (!res.ok) throw new Error('card init failed')
         const { gatewayUrl, fields } = await res.json()
@@ -423,6 +424,15 @@ function Cart() {
         <input
           type="radio"
           name="payment"
+          checked={paymentMethod === 'cash'}
+          onChange={() => setPaymentMethod('cash')}
+        />
+        {t('payByCash')}
+      </label>
+      <label className="checkout-radio">
+        <input
+          type="radio"
+          name="payment"
           checked={paymentMethod === 'card'}
           onChange={() => setPaymentMethod('card')}
         />
@@ -435,15 +445,23 @@ function Cart() {
           <img src="/payment-logos/amex.png" alt="American Express" />
         </span>
       </label>
-      <label className="checkout-radio">
-        <input
-          type="radio"
-          name="payment"
-          checked={paymentMethod === 'cash'}
-          onChange={() => setPaymentMethod('cash')}
-        />
-        {t('payByCash')}
-      </label>
+      {paymentMethod === 'card' && (
+        <div className="checkout-installments">
+          <label htmlFor="installments">{t('installments')}</label>
+          <select
+            id="installments"
+            value={installments}
+            onChange={(e) => setInstallments(e.target.value)}
+          >
+            <option value="">{t('installmentsNone')}</option>
+            {[2, 3, 4, 6, 9, 12].map((n) => (
+              <option key={n} value={n}>
+                {n} {t('installmentsRate')}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="recipient-card">
         <h2 className="checkout-step-title recipient-title">{t('recipientInfo')}</h2>
