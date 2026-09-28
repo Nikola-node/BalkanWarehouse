@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom'
 import { t } from '../i18n'
 
-const PAYMENT_BADGES = ['Maestro', 'Mastercard', 'DinaCard', 'VISA', 'American Express', 'Banca Intesa', 'Mastercard ID Check', 'Visa Secure']
+// Real logo files from Banca Intesa's own brand package (not stand-ins) -
+// grouping/spacing follows their own reference layout: acceptance marks
+// together, then their logo, then the security program marks together,
+// each program mark linked to its own required URL.
+const ACCEPTANCE_MARKS = [
+  { src: '/payment-logos/maestro.png', alt: 'Maestro' },
+  { src: '/payment-logos/mastercard.png', alt: 'Mastercard' },
+  { src: '/payment-logos/dinacard.png', alt: 'DinaCard' },
+  { src: '/payment-logos/visa.png', alt: 'Visa' },
+  { src: '/payment-logos/amex.png', alt: 'American Express' },
+]
 
 function Footer() {
   return (
@@ -31,9 +41,28 @@ function Footer() {
       <p className="site-footer-disclaimer">{t('footerDisclaimer')}</p>
 
       <div className="site-footer-payments">
-        {PAYMENT_BADGES.map((label) => (
-          <span key={label} className="payment-badge">{label}</span>
-        ))}
+        <div className="site-footer-payment-group">
+          {ACCEPTANCE_MARKS.map((logo) => (
+            <img key={logo.alt} src={logo.src} alt={logo.alt} />
+          ))}
+        </div>
+
+        <a href="https://www.bancaintesa.rs/" target="_blank" rel="noreferrer" className="site-footer-bank-logo">
+          <img src="/payment-logos/banca-intesa.png" alt="Banca Intesa" />
+        </a>
+
+        <div className="site-footer-payment-group site-footer-payment-group-secure">
+          <a href="https://www.mastercard.com/rs/consumer/credit-cards.html" target="_blank" rel="noreferrer">
+            <img src="/payment-logos/mc-id-check.png" alt="Mastercard ID Check" />
+          </a>
+          <a
+            href="https://rs.visa.com/pay-with-visa/security-and-assistance/protected-everywhere.html"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <img src="/payment-logos/visa-secure.png" alt="Visa Secure" />
+          </a>
+        </div>
       </div>
 
       <div className="site-footer-bottom">
