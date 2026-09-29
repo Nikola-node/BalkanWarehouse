@@ -901,6 +901,43 @@
   }
 }
 
+/* "Novi proizvodi" on the homepage is a quick-browse row, not the full
+   product-grid card - on a phone it only needs enough to recognize the
+   item and its price, not the SKU code, description, exact stock count, or
+   the secondary VAT-inclusive price line. Dropping those frees up room to
+   let the photo (the thing people actually scan) take up more of the card. */
+@media (max-width: 700px) {
+  .newest-products-card .product-card-code,
+  .newest-products-card .product-card-description,
+  .newest-products-card .product-card-stock-qty,
+  .newest-products-card .product-card-price-incl-vat {
+    display: none;
+  }
+
+  .newest-products-card .product-card-image {
+    aspect-ratio: 4 / 5;
+    margin-bottom: 6px;
+  }
+
+  .newest-products-card h3 {
+    margin: 0 0 6px;
+    font-size: 13px;
+  }
+
+  .newest-products-card .product-card-colors {
+    margin-bottom: 6px;
+  }
+
+  .newest-products-card .product-card-stock {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+  }
+
+  .newest-products-card .product-card-price-row {
+    padding-top: 6px;
+  }
+}
+
 /* Tighter vertical rhythm on phones - the 12-16px gaps that give a
    comfortably wide desktop card room to breathe just look sparse and
    wasteful on a narrow phone card. */
@@ -1001,6 +1038,10 @@
   gap: 40px;
 }
 
+.product-detail > * {
+  min-width: 0;
+}
+
 /* While a color/size swap's new data is still loading, the page just dims
    slightly instead of blanking out - the transition lives on the permanent
    base class so both the dim-in and the fade-back-to-full-opacity animate,
@@ -1085,6 +1126,7 @@
 
 .product-gallery-thumbs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }

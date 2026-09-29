@@ -14,6 +14,10 @@ function OrderResult({ success }) {
   const { clearCart } = useCart()
 
   useEffect(() => {
+    // Landed on via a multi-hop redirect (browser -> NestPay -> our backend
+    // -> here), not a same-tab click - explicit regardless of outcome
+    // rather than trusting that chain to always leave scroll at 0.
+    window.scrollTo(0, 0)
     if (success) {
       clearCart()
       Swal.fire({

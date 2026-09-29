@@ -297,6 +297,10 @@ function Cart() {
       if (!res.ok) throw new Error('order request failed')
       clearCart()
       setSubmitted(true)
+      // Swapping to the confirmation view happens in place on the same
+      // /cart route (no navigation), so nothing else resets scroll - left
+      // alone, it renders wherever the long checkout form was scrolled to.
+      window.scrollTo(0, 0)
       Swal.fire({
         icon: 'info',
         title: t('printNoticeTitle'),
