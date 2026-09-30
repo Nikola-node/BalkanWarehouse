@@ -5,6 +5,7 @@ import { useCart } from '../CartContext'
 import { useCurrency } from '../CurrencyContext'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
 import { t, getLang } from '../i18n'
+import OrderConfirmationDetails from './OrderConfirmationDetails'
 
 const initialForm = {
   firstName: '',
@@ -110,11 +111,11 @@ function DeliveryInfoButton() {
 
 function Cart() {
   const { items, updateQuantity, removeItem, clearCart, total } = useCart()
-  const { formatPrice, formatLineTotal, toRsd, formatRsd } = useCurrency()
+  const { formatPrice, formatLineTotal, toRsdInclVat, formatRsd } = useCurrency()
   // Summed from each item's own rounded-to-RSD line total, not from the raw
   // EUR total - otherwise the displayed grand total can land a few dinars
   // off from what adding up the displayed line totals gives you.
-  const totalRsd = items.reduce((sum, item) => sum + toRsd(item.price) * item.quantity, 0)
+  const totalRsd = items.reduce((sum, item) => sum + toRsdInclVat(item.price) * item.quantity, 0)
   // Computed by the backend from each item's real weight, same as the
   // price - never guessed client-side, so it can't drift from what the
   // order will actually be charged.
@@ -125,6 +126,7 @@ function Cart() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [submittedOrderNumber, setSubmittedOrderNumber] = useState('')
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   // Holds the raw typed text while a quantity field is being edited, keyed
   // by item id - kept separate from the cart's own quantity (a number) for
@@ -295,7 +297,9 @@ function Cart() {
         body: JSON.stringify({ items, customer: form, paymentMethod, total, recaptchaToken, lang: getLang() }),
       })
       if (!res.ok) throw new Error('order request failed')
+      const { orderNumber } = await res.json()
       clearCart()
+      setSubmittedOrderNumber(orderNumber)
       setSubmitted(true)
       // Swapping to the confirmation view happens in place on the same
       // /cart route (no navigation), so nothing else resets scroll - left
@@ -322,6 +326,7 @@ function Cart() {
       <div className="cart-empty">
         <h1>{t('orderSuccessTitle')}</h1>
         <p>{t('orderSuccessBody')}</p>
+        {submittedOrderNumber && <OrderConfirmationDetails orderNumber={submittedOrderNumber} />}
         <Link to="/proizvodi" className="cart-continue">
           {t('continueShopping')}
         </Link>

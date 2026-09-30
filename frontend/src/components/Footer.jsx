@@ -34,6 +34,7 @@ function Footer() {
           <h4>{t('footerContactUs')}</h4>
           <p>Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Beograd</p>
           <p>+38162625111</p>
+          <p>{t('workingHours')}</p>
           <p>info@balkanwarehouse.com</p>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { useCart } from '../CartContext'
 import { t } from '../i18n'
+import OrderConfirmationDetails from './OrderConfirmationDetails'
 
 // Landed on after NestPay redirects the browser back from its hosted
 // payment page - `success` picks which of the two outcomes to show. The
@@ -36,11 +37,7 @@ function OrderResult({ success }) {
     <div className="cart-empty">
       <h1>{success ? t('cardPaymentSuccessTitle') : t('cardPaymentFailedTitle')}</h1>
       <p>{success ? t('cardPaymentSuccessBody') : t('cardPaymentFailedBody')}</p>
-      {orderNumber && (
-        <p className="order-result-number">
-          {t('orderNumber')}: {orderNumber}
-        </p>
-      )}
+      {orderNumber && <OrderConfirmationDetails orderNumber={orderNumber} showTransaction />}
       <Link to="/proizvodi" className="cart-continue">
         {t('continueShopping')}
       </Link>

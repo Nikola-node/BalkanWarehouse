@@ -145,6 +145,18 @@ function CategoryGrid() {
   )
 }
 
+function ContactCta() {
+  return (
+    <section className="home-contact-cta">
+      <h2>{t('homeContactTitle')}</h2>
+      <p>{t('homeContactBody')}</p>
+      <Link to="/kontakt" className="home-contact-cta-button">
+        {t('homeContactButton')}
+      </Link>
+    </section>
+  )
+}
+
 function Home() {
   return (
     <div className="home-page">
@@ -156,6 +168,7 @@ function Home() {
       </div>
       <NewestProducts />
       <CategoryGrid />
+      <ContactCta />
     </div>
   )
 }

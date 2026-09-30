@@ -27,6 +27,10 @@ export function CurrencyProvider({ children }) {
   // Rounds to the para (RSD's smallest unit, 1/100 of a dinar) rather than
   // the whole dinar - card-payment standards require amounts be shown down
   // to the smallest currency unit, not rounded away.
+  // Promobox's own Price field is already ex-VAT (their wholesale/net
+  // price), not tax-inclusive - so a plain EUR-to-RSD conversion is the
+  // excl-VAT figure, and the tax-inclusive one is that *times* 1.2, not
+  // divided.
   function toRsd(eurAmount) {
     return Math.round(eurAmount * rate * 100) / 100
   }
@@ -35,26 +39,30 @@ export function CurrencyProvider({ children }) {
     return `${rsdAmount.toLocaleString('sr-RS', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} RSD`
   }
 
+  function toRsdInclVat(eurAmount) {
+    return Math.round(toRsd(eurAmount) * 1.2 * 100) / 100
+  }
+
+  // The legally required final price for a VAT-registered seller - what a
+  // customer actually pays.
   function formatPrice(eurAmount) {
+    return formatRsd(toRsdInclVat(eurAmount))
+  }
+
+  // The pre-tax figure shown as a secondary line - a direct conversion,
+  // since the stored EUR price is already ex-VAT.
+  function formatPriceExclVat(eurAmount) {
     return formatRsd(toRsd(eurAmount))
   }
 
-  // Displayed prices are tax-inclusive (the legally required final price for
-  // a VAT-registered seller) - this derives the pre-tax figure shown as a
-  // secondary line, dividing the same RSD amount customers see rather than
-  // converting from EUR separately, so the two numbers always multiply back
-  // to each other exactly (PDV rate is 20%, i.e. *1.2).
-  function formatPriceExclVat(eurAmount) {
-    return formatRsd(Math.round((toRsd(eurAmount) / 1.2) * 100) / 100)
-  }
-
-  // A line total has to be the displayed unit price times the quantity, or
-  // it won't add up for the customer (e.g. "310,00 RSD" shown per unit but a
-  // total that isn't a clean multiple of 310,00) - so this rounds the unit
-  // price to RSD (to the para) *first*, then multiplies, rather than
-  // converting quantity*EUR to RSD and rounding only once at the end.
+  // A line total has to be the displayed (tax-inclusive) unit price times
+  // the quantity, or it won't add up for the customer (e.g. "310,00 RSD"
+  // shown per unit but a total that isn't a clean multiple of 310,00) - so
+  // this rounds the unit price to RSD (to the para) *first*, then
+  // multiplies, rather than converting quantity*EUR to RSD and rounding
+  // only once at the end.
   function formatLineTotal(eurUnitPrice, quantity) {
-    return formatRsd(toRsd(eurUnitPrice) * quantity)
+    return formatRsd(toRsdInclVat(eurUnitPrice) * quantity)
   }
 
   // For the price-range filter, which takes RSD input from the customer but
@@ -69,7 +77,7 @@ export function CurrencyProvider({ children }) {
 
   return (
     <CurrencyContext.Provider
-      value={{ rate, formatPrice, formatPriceExclVat, formatLineTotal, toRsd, formatRsd, eurFromRsd, rsdFromEur }}
+      value={{ rate, formatPrice, formatPriceExclVat, formatLineTotal, toRsd, toRsdInclVat, formatRsd, eurFromRsd, rsdFromEur }}
     >
       {children}
     </CurrencyContext.Provider>

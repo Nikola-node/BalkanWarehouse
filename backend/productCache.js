@@ -3,7 +3,6 @@ import { classify, getTree, getUnmappedCombos, resetUnmappedCombos } from './cat
 
 const LANGS = ['sr', 'en'];
 const REFRESH_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
-const MARKUP = 1.1;
 
 let cachedProducts = { sr: [], en: [] };
 let cachedGroupedProducts = { sr: [], en: [] };
@@ -14,12 +13,12 @@ let cachedPackageSizes = [];
 let cachedStockByProduct = new Map();
 let lastRefreshedAt = null;
 
-export function applyMarkup(product) {
-  const { Price2, ...rest } = product; // Price2 is Promobox's internal/wholesale price, never send it out
-  return {
-    ...rest,
-    Price: Math.round(product.Price * MARKUP * 100) / 100,
-  };
+// Prices are shown at Promobox's own original rate, no markup - this only
+// ever strips Price2 (Promobox's internal/wholesale price), which must
+// never be sent out.
+export function stripWholesalePrice(product) {
+  const { Price2, ...rest } = product;
+  return rest;
 }
 
 // Promobox lists one row per size/color variant (SKU). Customers should see
@@ -354,7 +353,7 @@ export async function refreshProducts() {
       // this, two separate API calls (one per culture) can return their rows
       // in different order, making the same product show e.g. a blue variant's
       // name in Serbian but a black variant's name in English.
-      cachedProducts[lang] = raw.map(applyMarkup).sort((a, b) => a.Id.localeCompare(b.Id));
+      cachedProducts[lang] = raw.map(stripWholesalePrice).sort((a, b) => a.Id.localeCompare(b.Id));
       cachedGroupedProducts[lang] = groupByModel(cachedProducts[lang], modelInfo, stockByProduct, colorInfo);
       cachedColors[lang] = colors;
       cachedShades[lang] = shades;

@@ -4,7 +4,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 // MEDONI's own business info, shown as the seller block on every order
 // email - matches the format used on tshirtshop.rs's real order emails.
-const SELLER = {
+export const SELLER = {
   name: 'MEDONI',
   address: 'Kneza Višeslava 63, TC Vidikovac Lokal/1.43',
   phone: '+38162625111',
@@ -176,10 +176,12 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
   // RSD) times the quantity, not the raw EUR total rounded once at the end
   // - otherwise "310 din" times 50 wouldn't match the total shown below it,
   // the same rounding mismatch the site's own cart page had to fix.
+  // Promobox's Price is ex-VAT, so the shown/charged unit price - the
+  // final, tax-inclusive one - needs *1.2, same as the site's own cart.
   let itemsCostRsd = 0;
   const itemRows = items
     .map((item) => {
-      const unitRsd = toRsd(item.price, eurToRsdRate);
+      const unitRsd = Math.round(toRsd(item.price, eurToRsdRate) * 1.2 * 100) / 100;
       const lineTotalRsd = unitRsd * item.quantity;
       itemsCostRsd += lineTotalRsd;
       return `

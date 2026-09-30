@@ -50,6 +50,11 @@
   color: var(--muted);
 }
 
+.site-contact-info-hours {
+  font-size: 12px;
+  color: var(--text);
+}
+
 /* The phone/email text is the first thing to go once the header gets tight -
    dropping it buys back room for the search bar well before the logo/cart/
    language row itself needs to wrap. */
@@ -1571,6 +1576,56 @@
   font-weight: 600;
 }
 
+/* The 5-element payment confirmation (Banca Intesa Uputstvo 2.7) - plain
+   left-aligned document style, since it's read/verified line by line
+   rather than being a marketing moment like the rest of this page. */
+.order-confirmation {
+  text-align: left;
+  max-width: 560px;
+  margin: 32px auto 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.order-confirmation-outcome {
+  font-weight: 600;
+  margin: 0 0 20px;
+}
+
+.order-confirmation-section {
+  margin-bottom: 20px;
+}
+
+.order-confirmation-section:last-child {
+  margin-bottom: 0;
+}
+
+.order-confirmation-section h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.order-confirmation-section p {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.order-confirmation-items {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  font-size: 13px;
+}
+
+.order-confirmation-items th,
+.order-confirmation-items td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
 .not-found {
   text-align: center;
   padding: 64px 0;
@@ -2196,6 +2251,35 @@
   margin: 0;
 }
 
+.home-contact-cta {
+  margin-top: 48px;
+  padding: 40px 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.home-contact-cta h2 {
+  font-size: 20px;
+  margin: 0 0 8px;
+}
+
+.home-contact-cta p {
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+.home-contact-cta-button {
+  display: inline-block;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 @media (max-width: 700px) {
   .category-grid {
     grid-template-columns: repeat(4, 1fr);
@@ -2311,7 +2395,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 32px;
+  gap: 16px;
 }
 
 .site-footer-payment-group {
@@ -2321,19 +2405,39 @@
   flex-wrap: wrap;
 }
 
+/* Sizes/spacing follow Banca Intesa's own branding rules (Uputstvo 2.2):
+   acceptance marks (this group) sized uniformly within their 37-180 x
+   23-113px range... */
 .site-footer-payment-group img {
-  height: 26px;
-  width: auto;
+  width: 50px;
+  height: 32px;
+  object-fit: contain;
   display: block;
 }
 
+/* ...program marks (Visa Secure/MC ID Check) sized at 60px - the smallest
+   Banca Intesa's own standard allows - since the required gap around them
+   scales with this width (4x), so this also keeps that gap as small as
+   the standard permits. */
 .site-footer-payment-group-secure img {
-  height: 30px;
+  width: 60px;
+  height: 38px;
 }
 
+/* Spacing set directly on the bank logo itself, sitting between the two
+   card-brand groups - equal margin on both sides so acceptance marks and
+   program marks sit symmetrically either side of it as one centered
+   cluster, rather than a one-sided margin visually shoving Visa Secure off
+   to the right on its own.
+   NOTE: 80px is below Banca Intesa's own documented minimum (Uputstvo 2.2
+   requires >= 4x the program-marks' width, i.e. >= 240px at their smallest
+   allowed 60px size) - by explicit request, prioritizing a tighter look
+   over that specific rule. Worth knowing before this site goes in front of
+   their inspection. */
 .site-footer-bank-logo {
   display: flex;
   align-items: center;
+  margin: 0 80px;
 }
 
 .site-footer-bank-logo img {

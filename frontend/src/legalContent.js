@@ -134,7 +134,7 @@ const content = {
       {
         heading: 'Rok isporuke',
         body: [
-          'Isporuka se vrši u roku od 3 do 7 radnih dana od potvrde porudžbine, u zavisnosti od raspoloživosti robe na stanju. Kupac će biti obavešten emailom kada porudžbina bude poslata, zajedno sa brojem za praćenje pošiljke.',
+          'Isporuka se vrši u roku od 3 do 7 radnih dana od potvrde porudžbine, u zavisnosti od raspoloživosti robe na stanju.',
         ],
       },
       {
@@ -164,7 +164,7 @@ const content = {
       {
         heading: 'Delivery time',
         body: [
-          'Orders are delivered within 3 to 7 business days of confirmation, depending on stock availability. The customer is notified by email once the order ships, along with a tracking number.',
+          'Orders are delivered within 3 to 7 business days of confirmation, depending on stock availability.',
         ],
       },
       {

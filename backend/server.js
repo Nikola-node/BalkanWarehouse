@@ -4,10 +4,10 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, applyMarkup, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
-import { generateOrderNumber, sendOrderEmails, sendContactEmail } from './email.js';
+import { generateOrderNumber, sendOrderEmails, sendContactEmail, SELLER } from './email.js';
 import { getSettings, updateSettings } from './settings.js';
 import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
@@ -366,7 +366,7 @@ function extractVideo(specifications) {
 app.get('/api/products/:id', async (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';
   try {
-    const detail = applyMarkup(await getProductDetail(req.params.id, lang));
+    const detail = stripWholesalePrice(await getProductDetail(req.params.id, lang));
     // Grouped by Shade rather than the broader Color field - several distinct
     // shades (e.g. "Plava" and "Rojal plava") can share one Color code, which
     // would otherwise merge visually different variants into a single swatch.
@@ -500,6 +500,28 @@ app.post('/api/orders', async (req, res) => {
   res.json({ ok: true, orderNumber: order.orderNumber });
 });
 
+// Public - the 5-element "Potvrda o plaćanju" Banca Intesa's EPM standard
+// (Uputstvo, 2.7) requires be shown on the confirmation page itself, not
+// just emailed. Safe without auth: the order number is exactly what the
+// customer already has from their own checkout/payment redirect (and the
+// same data already went to them by email), and it's a
+// WEB<timestamp><random> string, not sequentially guessable.
+app.get('/api/orders/:orderNumber/confirmation', (req, res) => {
+  const order = getOrder(req.params.orderNumber);
+  if (!order) return res.status(404).json({ error: 'Order not found' });
+  res.json({
+    orderNumber: order.orderNumber,
+    createdAt: order.createdAt,
+    customer: order.customer,
+    items: order.items,
+    deliveryCostRsd: order.deliveryCostRsd,
+    paymentMethod: order.paymentMethod,
+    status: order.status,
+    payment: order.payment || null,
+    seller: { name: SELLER.name, pib: SELLER.pib, address: SELLER.address },
+  });
+});
+
 // Card orders don't get finalized/emailed here like cash ones - this only
 // creates a *pending* order and hands back the fields (with a server-signed
 // hash) needed to redirect the browser to NestPay's own hosted payment page.
@@ -543,8 +565,10 @@ app.post('/api/orders/card-init', async (req, res) => {
   const eurToRsdRate = getSettings().eurToRsdRate;
   // Same per-line-then-sum rounding the cart and emails use, so the amount
   // actually charged matches the total the customer saw to the para.
+  // Promobox's Price is ex-VAT, so the amount actually charged - the final,
+  // tax-inclusive price - needs the *1.2 the customer's own cart total has.
   const itemsCostRsd = verifiedItems.reduce(
-    (sum, item) => sum + (Math.round(item.price * eurToRsdRate * 100) / 100) * item.quantity,
+    (sum, item) => sum + (Math.round(item.price * eurToRsdRate * 1.2 * 100) / 100) * item.quantity,
     0,
   );
   const amountRsd = (itemsCostRsd + deliveryCost).toFixed(2);
