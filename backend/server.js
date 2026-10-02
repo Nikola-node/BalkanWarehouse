@@ -612,7 +612,12 @@ app.post('/api/orders/card-init', async (req, res) => {
 // urlencoded parser since NestPay posts a plain HTML form, not JSON.
 async function handleNestpayCallback(req, res) {
   const body = req.body || {};
-  const oid = body.oid || body.ReturnOid;
+  // NestPay sometimes posts `oid` as two identically-named form fields (seen
+  // on rejected installment PreAuths) - express's urlencoded parser then
+  // turns it into an array, which would otherwise end up stringified as
+  // "WEB123,WEB123" in the redirect URL and break every lookup below.
+  const rawOid = body.oid || body.ReturnOid;
+  const oid = Array.isArray(rawOid) ? rawOid[0] : rawOid;
   const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
   const failRedirect = () => res.redirect(`${frontendOrigin}/porudzbina/neuspesna?order=${encodeURIComponent(oid || '')}`);
 
