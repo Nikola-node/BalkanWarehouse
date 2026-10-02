@@ -12,6 +12,19 @@ const content = {
           'BalkanWarehouse posluje u okviru privrednog društva MEDONI d.o.o., sa sedištem u Beogradu.',
         ],
       },
+      {
+        heading: 'Osnovni podaci o firmi',
+        body: [
+          'Pun naziv pravnog subjekta: MEDONI d.o.o. Beograd',
+          'Adresa: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Beograd',
+          'Pretežna delatnost: 4690 - Nespecijalizovana trgovina na veliko',
+          'Matični broj (registarski broj): 21548146',
+          'PIB (dodeljen od Poreske uprave RS): 111829034',
+          'Web adresa: balkanwarehouse.com',
+          'Kontakt telefon: +381 62 625 111',
+          'Kontakt e-mail: info@balkanwarehouse.com',
+        ],
+      },
     ],
     en: [
       {
@@ -19,6 +32,19 @@ const content = {
           'BalkanWarehouse is an online shop for business and promotional products, built for companies and individuals who need a reliable range of office supplies, technology, textiles, and other everyday, gift, or promotional items.',
           "Our goal is to give customers a clear view of a wide product range, transparent prices that already include VAT, and reliable delivery across Serbia.",
           'BalkanWarehouse operates under the company MEDONI d.o.o., based in Belgrade.',
+        ],
+      },
+      {
+        heading: 'Company information',
+        body: [
+          'Full legal name: MEDONI d.o.o. Beograd',
+          'Address: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Belgrade',
+          'Main activity: 4690 - Non-specialized wholesale trade',
+          'Company registration number: 21548146',
+          'Tax ID (PIB), issued by the Serbian Tax Administration: 111829034',
+          'Website: balkanwarehouse.com',
+          'Phone: +381 62 625 111',
+          'Email: info@balkanwarehouse.com',
         ],
       },
     ],
@@ -205,6 +231,7 @@ const content = {
         heading: 'Plaćanje karticom',
         body: [
           'Obrada plaćanja platnim karticama vrši se preko Banca Intesa a.d. Beograd. Podaci o platnoj kartici unose se isključivo na zaštićenoj stranici banke, putem SSL protokola i PKI sistema, i ni u jednom trenutku nisu dostupni na serverima BalkanWarehouse-a.',
+          'Prilikom plaćanja karticom, iznos porudžbine se najpre rezerviše na Vašem računu. Račun se stvarno zadužuje tek kada porudžbina bude poslata. Ukoliko porudžbina bude otkazana pre slanja, rezervacija se oslobađa i račun ne biva zadužen.',
         ],
       },
       {
@@ -226,6 +253,7 @@ const content = {
         heading: 'Card payment',
         body: [
           'Card payments are processed through Banca Intesa a.d. Beograd. Card details are entered exclusively on the bank\'s own secured page, over SSL with a PKI system, and are never available on BalkanWarehouse\'s own servers at any point.',
+          'When paying by card, the order amount is first reserved on your account. Your account is only actually charged once the order has been shipped. If the order is cancelled before shipping, the reservation is released and your account is never charged.',
         ],
       },
       {
