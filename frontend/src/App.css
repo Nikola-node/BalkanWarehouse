@@ -1307,6 +1307,11 @@
   margin-bottom: 8px;
 }
 
+.add-to-cart:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .site-cart-pulse svg {
   animation: cart-bump 0.4s ease;
 }

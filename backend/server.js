@@ -429,6 +429,7 @@ function verifyItems(items) {
     const entry = catalog.get(item?.id);
     const quantity = Number(item?.quantity);
     if (!entry || !Number.isInteger(quantity) || quantity <= 0) return null;
+    if (quantity > getStockQty(item.id)) return null;
     verifiedItems.push({ ...item, price: entry.price, quantity });
     totalWeightKg += entry.weight * quantity;
   }

@@ -221,9 +221,19 @@ function Cart() {
   function changeQuantity(id, quantity) {
     if (quantity <= 0) {
       confirmRemove(id)
-    } else {
-      updateQuantity(id, quantity)
+      return
     }
+    const item = items.find((i) => i.id === id)
+    if (item?.stockQty != null && quantity > item.stockQty) {
+      Swal.fire({
+        icon: 'error',
+        text: `${t('stockLimit')} ${item.stockQty} ${t('pieces')}`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#111111',
+      })
+      return
+    }
+    updateQuantity(id, quantity)
   }
 
   function handleQuantityInput(id, value) {
@@ -381,7 +391,11 @@ function Cart() {
                   }
                 }}
               />
-              <button type="button" onClick={() => changeQuantity(item.id, item.quantity + 1)}>
+              <button
+                type="button"
+                disabled={item.stockQty != null && item.quantity >= item.stockQty}
+                onClick={() => changeQuantity(item.id, item.quantity + 1)}
+              >
                 +
               </button>
             </div>

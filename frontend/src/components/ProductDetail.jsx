@@ -16,7 +16,7 @@ const LENS_ZOOM = 2.2
 function ProductDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { addItem } = useCart()
+  const { addItem, items: cartItems } = useCart()
   const { formatPrice, formatPriceExclVat } = useCurrency()
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -145,7 +145,11 @@ function ProductDetail() {
   // changes and so never fires a fresh load event to reveal it again.
   const imageLoaded = activeSlide?.type === 'image' && loadedSrc === activeSlide.src
   const sizes = [...new Set(product.variants.map((v) => v.size).filter(Boolean))]
-  const inStock = (product.Stocks || []).some((s) => s.Qty > 0)
+  const currentVariant = product.variants.find((v) => String(v.id) === String(product.Id))
+  const availableQty = currentVariant
+    ? currentVariant.stockQty
+    : (product.Stocks || []).reduce((sum, s) => sum + (s.Qty || 0), 0)
+  const inStock = availableQty > 0
 
   // One entry per distinct color, first variant seen used as its representative.
   const colors = []
@@ -182,6 +186,17 @@ function ProductDetail() {
 
   function handleAddToCart() {
     const qty = parseInt(quantity, 10)
+    const inCartQty = cartItems.find((i) => i.id === product.Id)?.quantity || 0
+    if (!inStock) return
+    if (inCartQty + qty > availableQty) {
+      Swal.fire({
+        icon: 'error',
+        text: `${t('stockLimit')} ${availableQty} ${t('pieces')}`,
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#111111',
+      })
+      return
+    }
     // PackageInfo is what's actually shown to the customer as the "Pakovanje"
     // spec (backend/server.js builds that spec from PackageInfo, not Package),
     // so validation must key off the same field - Package can carry a third,
@@ -211,6 +226,7 @@ function ProductDetail() {
       price: product.Price,
       image: images[0]?.Image,
       quantity: qty,
+      stockQty: availableQty,
     })
     Swal.fire({
       icon: 'success',
@@ -456,12 +472,14 @@ function ProductDetail() {
           <input
             type="number"
             min="1"
+            max={availableQty}
+            disabled={!inStock}
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
           />
         </label>
 
-        <button className="add-to-cart" onClick={handleAddToCart}>
+        <button className="add-to-cart" onClick={handleAddToCart} disabled={!inStock}>
           {t('addToCart')}
         </button>
 
