@@ -62,6 +62,7 @@ const STRINGS = {
     procReturnCode: 'Kod statusa transakcije',
     mdStatus: 'Statusni kod 3D transakcije',
     transactionDate: 'Datum transakcije',
+    unattendedMailbox: 'Napomena: Molimo Vas da ne odgovarate na ovaj e-mail. Poruka je poslata sa nenadgledanog poštanskog sandučeta, pa odgovori neće biti pročitani. Za sva pitanja pišite na',
     locale: 'sr-RS',
   },
   en: {
@@ -108,6 +109,7 @@ const STRINGS = {
     procReturnCode: 'Transaction status code',
     mdStatus: '3D transaction status code',
     transactionDate: 'Transaction date',
+    unattendedMailbox: 'Please note: Do not reply to this email. This email is sent from an unattended mailbox, so replies will not be read. For any questions, write to',
     locale: 'en-US',
   },
 };
@@ -168,7 +170,7 @@ function paymentStatusBlock(payment, t) {
     ])}`;
 }
 
-function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate, deliveryCostRsd, payment }, lang) {
+function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod, eurToRsdRate, deliveryCostRsd, payment }, lang, { customerCopy = false } = {}) {
   const t = STRINGS[lang] || STRINGS.sr;
   const paymentLabels = { card: t.payByCard, cash: t.payByCash };
 
@@ -266,6 +268,10 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
         <td style="padding: 6px 0 3px; font-weight: bold;">${formatRsd(itemsCostRsd + deliveryCostRsd, t.locale)}</td>
       </tr>
     </table>
+    ${customerCopy ? `
+    <p style="margin-top: 24px; padding-top: 12px; border-top: 1px solid #eee; color: #555; font-size: 13px;">
+      ${t.unattendedMailbox} <a href="mailto:${SELLER.email}" style="color: #555;">${SELLER.email}</a>.
+    </p>` : ''}
   </div>`;
 }
 
@@ -306,7 +312,7 @@ export async function sendOrderEmails(order) {
       from,
       to: order.customer.email,
       subject: STRINGS[customerLang].orderConfirmationSubject(order.orderNumber),
-      html: buildOrderHtml(order, customerLang),
+      html: buildOrderHtml(order, customerLang, { customerCopy: true }),
     });
     if (error) console.error('Failed to send customer confirmation email:', error.message);
   } catch (err) {
@@ -345,7 +351,7 @@ export async function sendContactEmail({ name, email, message }) {
       from,
       to: 'info@balkanwarehouse.com',
       replyTo: email,
-      subject: `Poruka sa sajta od ${name}`,
+      subject: `Nova poruka sa kontakt forme – ${name}`,
       html,
     });
     if (error) console.error('Failed to send contact email:', error.message);

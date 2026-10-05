@@ -232,6 +232,29 @@ export function getDiverseNewest({ lang = 'sr', limit = 16 } = {}) {
   return result;
 }
 
+function shuffled(list) {
+  const copy = [...list];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// Homepage "picked" rows: a fully random selection of in-stock products from
+// the whole catalogue, split into rows. No categories are involved, and the
+// selection is reshuffled on every request, so the rows change on every visit.
+export function getRandomRows({ lang = 'sr', rows = 5, perRow = 15 } = {}) {
+  const pool = shuffled(applyBaseFilters(cachedGroupedProducts[lang], { inStock: true }));
+  const result = [];
+  for (let i = 0; i < rows; i++) {
+    const items = pool.slice(i * perRow, (i + 1) * perRow);
+    if (items.length === 0) break;
+    result.push({ id: i, items });
+  }
+  return result;
+}
+
 // Small, ranked set of products for search-as-you-type suggestions - matches
 // whose name starts with the typed text are shown before ones that merely
 // contain it, so typing "sol" surfaces "Solja ..." before "Kesica za solju".

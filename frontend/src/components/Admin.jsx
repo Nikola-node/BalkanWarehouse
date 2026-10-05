@@ -433,7 +433,7 @@ function Admin() {
         apiPath="/api/ads"
         adminApiPath="/api/admin/ads"
         title="Reklame (računar)"
-        hint="Slike koje se prikazuju u baneru na početnoj strani kad je sajt otvoren na računaru/tabletu. Preporučen format je oko 3:1 (npr. 1500×500px) - svaka slika se automatski iseče da popuni taj format, tako da nije potrebna tačna veličina. Svaka slika može da vodi na neku stranicu sajta ili spoljni link kada se klikne - npr. /proizvodi?nodeId=neka-kategorija, /product/123, ili puna adresa poput https://..."
+        hint="Slike koje se prikazuju u baneru na početnoj strani kad je sajt otvoren na računaru (ekrani širi od 900px). Preporučen format je 3:1: 1920×640px (za oštrije slike na ekranima visoke rezolucije 2544×848px). Slika se sa strana iseče da popuni taj format, pa važno je da ključni deo bude u sredini. Svaka slika može da vodi na neku stranicu sajta ili spoljni link kada se klikne - npr. /proizvodi?nodeId=neka-kategorija, /product/123, ili puna adresa poput https://..."
       />
 
       <AdsManager
@@ -442,7 +442,7 @@ function Admin() {
         apiPath="/api/ads/mobile"
         adminApiPath="/api/admin/ads/mobile"
         title="Reklame (mobilni)"
-        hint="Posebne slike koje se prikazuju umesto gornjih kad je sajt otvoren na telefonu - koristan je uspravniji format (npr. 4:5, poput 1200×1500px) umesto širokog baneru za računar. Isti sistem linkova kao gore."
+        hint="Posebne slike koje se prikazuju umesto gornjih kad je sajt otvoren na telefonu ili tabletu (ekrani do 900px). Preporučen format je 4:5: 800×1000px. Slika se prikazuje cela, bez sečenja, sa malom belom ivicom oko nje. Isti sistem linkova kao gore."
       />
         </>
       )}

@@ -116,6 +116,34 @@ function NewestProducts() {
   )
 }
 
+// Five rows of about 15 completely random in-stock products each, drawn from
+// the whole catalogue and reshuffled on every visit. Each row reuses the
+// newest row's styling (the "newest-products" classes).
+function PickedRows() {
+  const [rows, setRows] = useState([])
+
+  useEffect(() => {
+    const params = new URLSearchParams({ rows: 5, perRow: 15, lang: getLang() })
+    fetch(`${BACKEND_URL}/api/products/random-rows?${params}`)
+      .then((res) => res.json())
+      .then((data) => setRows(data.rows))
+      .catch(() => {})
+  }, [])
+
+  if (rows.length === 0) return null
+
+  return (
+    <div className="picked-products">
+      <h2 className="picked-products-title">{t('pickedProducts')}</h2>
+      {rows.map((row) => (
+        <section className="newest-products picked-products-row" key={row.id}>
+          <ProductCarousel items={row.items} classPrefix="newest-products" maxVisible={5} showDots />
+        </section>
+      ))}
+    </div>
+  )
+}
+
 function CategoryGrid() {
   const [items, setItems] = useState([])
 
@@ -166,8 +194,9 @@ function Home() {
       <div className="hero-carousel-mobile-only">
         <HeroCarousel variant="mobile" />
       </div>
-      <NewestProducts />
       <CategoryGrid />
+      <NewestProducts />
+      <PickedRows />
       <ContactCta />
     </div>
   )

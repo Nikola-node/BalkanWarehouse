@@ -4,7 +4,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getRandomRows, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails, sendContactEmail, SELLER } from './email.js';
@@ -235,6 +235,14 @@ app.get('/api/products/featured', (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';
   const limit = Math.min(50, parseInt(req.query.limit, 10) || 16);
   res.json({ items: getDiverseNewest({ lang, limit }) });
+});
+
+// Fresh random category rows on every request - see getRandomRows.
+app.get('/api/products/random-rows', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const rows = Math.min(10, parseInt(req.query.rows, 10) || 5);
+  const perRow = Math.min(30, parseInt(req.query.perRow, 10) || 15);
+  res.json({ rows: getRandomRows({ lang, rows, perRow }) });
 });
 
 // One card per main category for the homepage "shop by category" grid -

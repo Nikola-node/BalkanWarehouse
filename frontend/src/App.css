@@ -906,21 +906,15 @@
   }
 }
 
-/* "Novi proizvodi" on the homepage is a quick-browse row, not the full
-   product-grid card - on a phone it only needs enough to recognize the
-   item and its price, not the SKU code, description, exact stock count, or
-   the secondary VAT-inclusive price line. Dropping those frees up room to
-   let the photo (the thing people actually scan) take up more of the card. */
+/* "Novi proizvodi" on the homepage is a quick-browse row, so on a phone it
+   drops only the secondary VAT-inclusive price line and keeps the code,
+   description and stock quantity, matching the compact card layout. */
 @media (max-width: 700px) {
-  .newest-products-card .product-card-code,
-  .newest-products-card .product-card-description,
-  .newest-products-card .product-card-stock-qty,
   .newest-products-card .product-card-price-incl-vat {
     display: none;
   }
 
   .newest-products-card .product-card-image {
-    aspect-ratio: 4 / 5;
     margin-bottom: 6px;
   }
 
@@ -2134,9 +2128,84 @@
   gap: 20px;
 }
 
+.picked-products {
+  margin-top: 48px;
+}
+
+.picked-products-title {
+  font-size: 20px;
+  margin: 0 0 20px;
+}
+
+.picked-products-row {
+  margin-top: 32px;
+}
+
 .newest-products-card {
   flex: 0 0 auto;
   min-width: 0;
+  display: flex;
+}
+
+/* Every card in the row is the same height: the wrapper stretches to the
+   tallest card, the card fills it, and the price row sits at the bottom. */
+.newest-products-card .product-card {
+  flex: 1 1 auto;
+}
+
+.newest-products-card .product-card-price-row {
+  margin-top: auto;
+}
+
+/* On a phone the cards take the full width, and the arrows sit on the same
+   line as the dots: left arrow, dots, right arrow. The section becomes a
+   three-column grid and the row's children are placed directly into it. */
+@media (max-width: 700px) {
+  .newest-products {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    column-gap: 10px;
+  }
+
+
+  .newest-products > h2 {
+    grid-column: 1 / -1;
+  }
+
+  .newest-products-row {
+    display: contents;
+  }
+
+  .newest-products-viewport {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-bottom: 12px;
+  }
+
+  .newest-products-arrow-left {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: end;
+  }
+
+  .newest-products-arrow-right {
+    grid-column: 3;
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .newest-products-dots {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: center;
+  }
+}
+
+/* Photo box matches the white product backgrounds, so the edges of a
+   letterboxed photo don't show as a grey band against the page. */
+.newest-products-card .product-card-image {
+  background: #fff;
 }
 
 .newest-products-dots {
@@ -2185,6 +2254,38 @@
   background: var(--text);
 }
 
+/* Phone: plain chevrons and small dots on one line, as in the reference. */
+@media (max-width: 700px) {
+  .newest-products-arrow {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--muted);
+    font-size: 22px;
+  }
+
+  .newest-products-arrow:hover {
+    border-color: transparent;
+    color: var(--text);
+  }
+
+  .newest-products-dots {
+    gap: 6px;
+    margin-top: 0;
+  }
+
+  .newest-products-dot {
+    width: 6px;
+    height: 6px;
+  }
+
+  .newest-products-dot.active {
+    width: 18px;
+  }
+}
+
 .category-grid-section {
   margin-top: 48px;
 }
@@ -2222,7 +2323,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #f7f7f7;
+  background: #fff;
   border-radius: 6px;
   overflow: hidden;
 }
@@ -2290,8 +2391,14 @@
 
 
 @media (max-width: 700px) {
-  .hero-slide {
-    padding: 0 50px;
+  /* A small white margin around the ad; contain keeps its 4:5 shape, so it
+     shrinks evenly instead of being cropped. */
+  .hero-carousel-mobile .hero-slide {
+    inset: 12px;
+  }
+
+  .hero-carousel-mobile .hero-slide-image {
+    object-fit: contain;
   }
 
   .hero-slide h1 {

@@ -3,6 +3,10 @@ import { t } from '../i18n'
 import ProductCard from './ProductCard'
 
 const CARD_GAP = 20
+// Auto-advance slides at the default speed; manual arrow and dot clicks use
+// a shorter slide so the row can be cycled quickly by hand.
+const AUTO_SLIDE_MS = 400
+const MANUAL_SLIDE_MS = 200
 
 // Fewer cards fit as the viewport narrows - on a phone, a fixed number of
 // fixed-width cards would either overflow the screen or get squeezed
@@ -35,6 +39,7 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
   // product it points to is `slot - visible`, wrapped into range.
   const [slot, setSlot] = useState(maxVisible)
   const [animate, setAnimate] = useState(true)
+  const [slideMs, setSlideMs] = useState(AUTO_SLIDE_MS)
   const [viewportWidth, setViewportWidth] = useState(0)
   const visible = visibleCardsFor(viewportWidth, maxVisible)
   // A callback ref (not useRef) so this fires the instant the viewport div
@@ -49,6 +54,8 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
   // blank cards until the backlog cleared. A plain ref (not state) is fine
   // since it only gates a callback and never needs to trigger a render.
   const busyRef = useRef(false)
+  // Where a finger started on the row, for swipe-to-slide on phones.
+  const touchStartX = useRef(null)
 
   useEffect(() => {
     if (!viewportNode) return
@@ -88,6 +95,7 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
       timer = setInterval(() => {
         if (busyRef.current) return
         busyRef.current = true
+        setSlideMs(AUTO_SLIDE_MS)
         setSlot((s) => s + 1)
       }, autoAdvanceMs)
     }
@@ -121,18 +129,37 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
   function prev() {
     if (busyRef.current) return
     busyRef.current = true
+    setSlideMs(MANUAL_SLIDE_MS)
     setSlot((s) => s - 1)
   }
 
   function next() {
     if (busyRef.current) return
     busyRef.current = true
+    setSlideMs(MANUAL_SLIDE_MS)
     setSlot((s) => s + 1)
+  }
+
+  // A swipe of more than 40px slides one card, the same as an arrow click.
+  // Vertical movement is left to the page (touch-action: pan-y below), so
+  // scrolling past the row still works.
+  function handleTouchStart(e) {
+    touchStartX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e) {
+    if (touchStartX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (!canLoop) return
+    if (dx > 40) prev()
+    else if (dx < -40) next()
   }
 
   function goTo(i) {
     if (busyRef.current) return
     busyRef.current = true
+    setSlideMs(MANUAL_SLIDE_MS)
     setSlot(visible + i)
   }
 
@@ -168,12 +195,18 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
           </button>
         )}
 
-        <div className={`${classPrefix}-viewport`} ref={viewportRef}>
+        <div
+          className={`${classPrefix}-viewport`}
+          ref={viewportRef}
+          style={{ touchAction: 'pan-y' }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           <div
             className={`${classPrefix}-track`}
             style={{
               transform: `translateX(-${(canLoop ? slot : 0) * stepPx}px)`,
-              transition: animate ? 'transform 0.4s ease' : 'none',
+              transition: animate ? `transform ${slideMs}ms ease` : 'none',
             }}
             onTransitionEnd={handleTransitionEnd}
           >
