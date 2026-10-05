@@ -24,13 +24,13 @@ export function buildPaymentFields({
   currency,
   lang,
   storeKey,
-  installment = '',
 }) {
   const trantype = 'PreAuth'; // DMS - required for goods only usable after delivery (see 2.4 of the bank's standards doc)
   const rnd = crypto.randomBytes(16).toString('hex');
 
-  // Exact field order from the bank's own hash formula:
-  // clientid|oid|amount|okurl|failurl|type|installment|rnd||||currency|storeKey
+  // Exact field order from the bank's own hash formula. The instalment slot is
+  // always skipped (empty) - the bank sets installments on its own payment page,
+  // and the POST must not contain an instalment parameter at all.
   const plainText = [
     escapeField(clientId),
     escapeField(oid),
@@ -38,7 +38,7 @@ export function buildPaymentFields({
     escapeField(okUrl),
     escapeField(failUrl),
     escapeField(trantype),
-    escapeField(installment),
+    '',
     escapeField(rnd),
     '',
     '',
@@ -56,7 +56,6 @@ export function buildPaymentFields({
     okUrl,
     failUrl,
     TranType: trantype,
-    Instalment: installment,
     currency,
     rnd,
     hash,

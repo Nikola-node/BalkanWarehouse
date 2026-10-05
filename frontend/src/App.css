@@ -1871,21 +1871,6 @@
   font-size: 14px;
 }
 
-.checkout-installments {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 12px 28px;
-  font-size: 14px;
-}
-
-.checkout-installments select {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-}
-
 .checkout-payment-brands {
   display: flex;
   align-items: center;

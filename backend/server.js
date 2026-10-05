@@ -527,23 +527,8 @@ app.get('/api/orders/:orderNumber/confirmation', (req, res) => {
 // hash) needed to redirect the browser to NestPay's own hosted payment page.
 // The order is only actually confirmed once NestPay calls back to
 // /api/nestpay/success or /api/nestpay/fail below.
-// Installment count is merchant-set (not chosen by the cardholder on the
-// bank's page) - only these counts are offered to the customer, matching
-// what the bank's test matrix (TC35) and typical DinaCard/local-card
-// installment plans actually support.
-const ALLOWED_INSTALLMENTS = [2, 3, 4, 6, 9, 12];
-
 app.post('/api/orders/card-init', async (req, res) => {
-  const { items, customer, recaptchaToken, lang, installments } = req.body || {};
-
-  let installment = '';
-  if (installments !== undefined && installments !== null && installments !== '') {
-    const n = Number(installments);
-    if (!ALLOWED_INSTALLMENTS.includes(n)) {
-      return res.status(400).json({ error: 'Invalid installment count' });
-    }
-    installment = String(n);
-  }
+  const { items, customer, recaptchaToken, lang } = req.body || {};
 
   const humanVerified = await verifyRecaptcha(recaptchaToken);
   if (!humanVerified) {
@@ -584,7 +569,6 @@ app.post('/api/orders/card-init', async (req, res) => {
     deliveryCostRsd: deliveryCost,
     customerLang: lang === 'en' ? 'en' : 'sr',
     status: 'pending',
-    installment,
   };
 
   console.log('New pending card order:', JSON.stringify(order, null, 2));
@@ -600,7 +584,6 @@ app.post('/api/orders/card-init', async (req, res) => {
     currency: '941',
     lang: order.customerLang,
     storeKey: process.env.NESTPAY_TEST_STORE_KEY,
-    installment,
   });
 
   res.json({ gatewayUrl: process.env.NESTPAY_TEST_GATEWAY_URL, fields });
@@ -612,10 +595,8 @@ app.post('/api/orders/card-init', async (req, res) => {
 // urlencoded parser since NestPay posts a plain HTML form, not JSON.
 async function handleNestpayCallback(req, res) {
   const body = req.body || {};
-  // NestPay sometimes posts `oid` as two identically-named form fields (seen
-  // on rejected installment PreAuths) - express's urlencoded parser then
-  // turns it into an array, which would otherwise end up stringified as
-  // "WEB123,WEB123" in the redirect URL and break every lookup below.
+  // A repeated `oid` form field parses as an array; take the first value so it
+  // isn't stringified as "WEB123,WEB123" in the redirect URL.
   const rawOid = body.oid || body.ReturnOid;
   const oid = Array.isArray(rawOid) ? rawOid[0] : rawOid;
   const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
