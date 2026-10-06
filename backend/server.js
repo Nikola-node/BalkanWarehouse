@@ -13,7 +13,7 @@ import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
 import { getAds, addAd, removeAd, updateAdLink, AD_IMAGES_DIR } from './ads.js';
 import { getOrders, addOrder, removeOrder, getOrder, updateOrder } from './orders.js';
-import { buildPaymentFields, verifyResponseHash, capturePayment, voidPayment, refundPayment } from './nestpay.js';
+import { buildPaymentFields, verifyResponseHash, capturePayment, voidPayment, refundPayment, nestpayConfig } from './nestpay.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -584,18 +584,19 @@ app.post('/api/orders/card-init', async (req, res) => {
   addOrder(order);
 
   const publicBackendUrl = process.env.PUBLIC_BACKEND_URL || `http://localhost:${PORT}`;
+  const cfg = nestpayConfig();
   const fields = buildPaymentFields({
-    clientId: process.env.NESTPAY_TEST_CLIENT_ID,
+    clientId: cfg.clientId,
     oid: orderNumber,
     amount: amountRsd,
     okUrl: `${publicBackendUrl}/api/nestpay/success`,
     failUrl: `${publicBackendUrl}/api/nestpay/fail`,
     currency: '941',
     lang: order.customerLang,
-    storeKey: process.env.NESTPAY_TEST_STORE_KEY,
+    storeKey: cfg.storeKey,
   });
 
-  res.json({ gatewayUrl: process.env.NESTPAY_TEST_GATEWAY_URL, fields });
+  res.json({ gatewayUrl: cfg.gatewayUrl, fields });
 });
 
 // NestPay POSTs the customer's browser here after they pay (or cancel) -
@@ -621,12 +622,13 @@ async function handleNestpayCallback(req, res) {
     return failRedirect();
   }
 
-  if (body.clientid !== process.env.NESTPAY_TEST_CLIENT_ID) {
+  const cfg = nestpayConfig();
+  if (body.clientid !== cfg.clientId) {
     console.error('NestPay callback: client id mismatch');
     return failRedirect();
   }
 
-  if (!verifyResponseHash(body, process.env.NESTPAY_TEST_STORE_KEY)) {
+  if (!verifyResponseHash(body, cfg.storeKey)) {
     console.error('NestPay callback: hash verification failed for order', oid);
     return failRedirect();
   }

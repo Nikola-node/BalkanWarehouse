@@ -83,23 +83,47 @@ function extractXmlTag(xml, tag) {
   return match ? match[1].trim() : '';
 }
 
+// Which NestPay environment the server talks to. Test is the default, so
+// nothing changes until NESTPAY_MODE=production is set on the server. The
+// production values come only from the NESTPAY_PROD_* variables.
+export function nestpayConfig() {
+  if (process.env.NESTPAY_MODE === 'production') {
+    return {
+      clientId: process.env.NESTPAY_PROD_CLIENT_ID,
+      username: process.env.NESTPAY_PROD_USERNAME,
+      password: process.env.NESTPAY_PROD_PASSWORD,
+      storeKey: process.env.NESTPAY_PROD_STORE_KEY,
+      gatewayUrl: process.env.NESTPAY_PROD_GATEWAY_URL || 'https://bib.eway2pay.com/fim/est3Dgate',
+      apiUrl: process.env.NESTPAY_PROD_API_URL || 'https://bib.eway2pay.com/fim/api',
+    };
+  }
+  return {
+    clientId: process.env.NESTPAY_TEST_CLIENT_ID,
+    username: process.env.NESTPAY_TEST_USERNAME,
+    password: process.env.NESTPAY_TEST_PASSWORD,
+    storeKey: process.env.NESTPAY_TEST_STORE_KEY,
+    gatewayUrl: process.env.NESTPAY_TEST_GATEWAY_URL,
+    apiUrl: process.env.NESTPAY_TEST_API_URL || 'https://testsecurepay.eway2pay.com/fim/api',
+  };
+}
+
 // The DMS follow-up actions (capture/void/refund) use a completely separate
 // API from the payment redirect above - a direct server-to-server XML
 // request authenticated with the Merchant Center username/password (not the
 // StoreKey), since by this point there's no browser/hash exchange left to
 // do, just "settle (or cancel) the reservation for this order".
 async function callTransactionApi(type, orderId) {
+  const cfg = nestpayConfig();
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <CC5Request>
-  <Name>${process.env.NESTPAY_TEST_USERNAME}</Name>
-  <Password>${process.env.NESTPAY_TEST_PASSWORD}</Password>
-  <ClientId>${process.env.NESTPAY_TEST_CLIENT_ID}</ClientId>
+  <Name>${cfg.username}</Name>
+  <Password>${cfg.password}</Password>
+  <ClientId>${cfg.clientId}</ClientId>
   <Type>${type}</Type>
   <OrderId>${orderId}</OrderId>
 </CC5Request>`;
 
-  const apiUrl = process.env.NESTPAY_TEST_API_URL || 'https://testsecurepay.eway2pay.com/fim/api';
-  const res = await fetch(apiUrl, {
+  const res = await fetch(cfg.apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `DATA=${encodeURIComponent(xml)}`,
