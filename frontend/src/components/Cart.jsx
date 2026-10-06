@@ -459,13 +459,6 @@ function Cart() {
           onChange={() => setPaymentMethod('card')}
         />
         {t('payByCard')}
-        <span className="checkout-payment-brands">
-          <img src="/payment-logos/maestro.png" alt="Maestro" />
-          <img src="/payment-logos/mastercard.png" alt="Mastercard" />
-          <img src="/payment-logos/dinacard.png" alt="DinaCard" />
-          <img src="/payment-logos/visa.png" alt="Visa" />
-          <img src="/payment-logos/amex.png" alt="American Express" />
-        </span>
       </label>
       <div className="recipient-card">
         <h2 className="checkout-step-title recipient-title">{t('recipientInfo')}</h2>

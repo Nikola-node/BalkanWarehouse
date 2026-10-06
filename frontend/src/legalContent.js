@@ -101,6 +101,70 @@ const content = {
           'Za sve eventualne sporove nadležan je sud u Beogradu. Cene su izražene u dinarima (RSD) i uključuju PDV. Prodavac zadržava pravo izmene cena, kao i prava da povremeno ažurira ove uslove kupovine.',
         ],
       },
+      {
+        heading: 'Osnovni podaci o firmi',
+        body: [
+          'Pun naziv pravnog subjekta: MEDONI d.o.o. Beograd',
+          'Adresa: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Beograd',
+          'Delatnost i šifra delatnosti: 4690 - Nespecijalizovana trgovina na veliko',
+          'Matični broj: 21548146',
+          'Poreski broj (PIB): 111829034',
+          'Web adresa: balkanwarehouse.com',
+          'Kontakt telefon: +381 62 625 111',
+          'Kontakt e-mail: info@balkanwarehouse.com',
+        ],
+      },
+      {
+        heading: 'Izjava o konverziji',
+        body: [
+          'Sva plaćanja biće izvršena u lokalnoj valuti Republike Srbije – dinar (RSD). Za informativni prikaz cena u drugim valutama koristi se srednji kurs Narodne Banke Srbije. Iznos za koji će biti zadužena Vaša platna kartica biće izražen u Vašoj lokalnoj valuti kroz konverziju u istu po kursu koji koriste kartičarske organizacije, a koji nama u trenutku transakcije ne može biti poznat. Kao rezultat ove konverzije postoji mogućnost neznatne razlike od originalne cene navedene na našem sajtu.',
+        ],
+      },
+      {
+        heading: 'Kontakt podaci – korisnički servis',
+        body: [
+          'Adresa: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Beograd',
+          'Telefon: +381 62 625 111',
+          'E-mail: info@balkanwarehouse.com',
+          'Na ove kontakte kupci se mogu obratiti za informacije o porudžbini, u slučaju reklamacije ili radi otkaza porudžbine.',
+        ],
+      },
+      {
+        heading: 'Dostava robe i eventualna ograničenja',
+        body: [
+          'Roba se isporučuje kurirskom službom na adresu koju kupac navede u porudžbini, na teritoriji Republike Srbije. Rok isporuke je od 3 do 7 radnih dana od potvrde porudžbine, u zavisnosti od raspoloživosti robe. Plaćanje pouzećem vrši se kuriru prilikom preuzimanja. Plaćanje karticom se pri porudžbini rezerviše na računu, a račun se stvarno zadužuje tek kada porudžbina bude poslata.',
+          'Trenutno ne vršimo isporuku na adrese van teritorije Republike Srbije. Detaljan opis dostave dostupan je na stranici Dostava.',
+        ],
+      },
+      {
+        heading: 'Politika reklamacija i otkaza',
+        body: [
+          'Reklamacije se podnose na e-mail info@balkanwarehouse.com ili telefonom na +381 62 625 111, uz opis problema, fotografiju i broj porudžbine. Novac se vraća na isti način kojim je porudžbina plaćena. Uslovi za povraćaj robe, kao i rok i postupak otkaza, prikazani su na stranici Povraćaj robe.',
+        ],
+      },
+      {
+        heading: 'Zaštita privatnosti korisnika',
+        body: [
+          'U ime BalkanWarehouse (MEDONI d.o.o.) obavezujemo se da ćemo čuvati privatnost svih naših kupaca. Prikupljamo samo neophodne, osnovne podatke o kupcima/korisnicima i podatke neophodne za poslovanje i informisanje korisnika u skladu sa dobrim poslovnim običajima i u cilju pružanja kvalitetne usluge. Dajemo kupcima mogućnost izbora uključujući mogućnost odluke da li žele ili ne da se izbrišu sa mailing lista koje se koriste za marketinške kampanje. Svi podaci o korisnicima/kupcima se strogo čuvaju i dostupni su samo zaposlenima kojima su ti podaci nužni za obavljanje posla. Svi zaposleni BalkanWarehouse (i poslovni partneri) odgovorni su za poštovanje načela zaštite privatnosti.',
+        ],
+      },
+      {
+        heading: 'Zaštita poverljivih podataka o transakciji',
+        body: [
+          'Prilikom unošenja podataka o platnoj kartici, poverljive informacije se prenose putem javne mreže u zaštićenoj (kriptovanoj) formi upotrebom SSL protokola i PKI sistema, kao trenutno najsavremenije kriptografske tehnologije.',
+          'Sigurnost podataka prilikom kupovine garantuje procesor platnih kartica, Banca Intesa ad Beograd, pa se tako kompletni proces naplate obavlja na stranicama banke. Niti jednog trenutka podaci o platnoj kartici nisu dostupni našem sistemu.',
+        ],
+      },
+      {
+        heading: 'Povraćaj sredstava',
+        body: [
+          'U slučaju vraćanja robe i povraćaja sredstava kupcu koji je prethodno platio nekom od platnih kartica, delimično ili u celosti, a bez obzira na razlog vraćanja, BalkanWarehouse je u obavezi da povraćaj vrši isključivo preko VISA, EC/MC, Maestro, Amex i Dina metoda plaćanja, što znači da će banka na zahtev prodavca obaviti povraćaj sredstava na račun korisnika kartice.',
+        ],
+      },
+      {
+        heading: 'Izjava o PDV-u',
+        body: ['PDV uračunat u cenu i nema skrivenih troškova.'],
+      },
     ],
     en: [
       {
@@ -151,6 +215,70 @@ const content = {
         body: [
           'Any disputes fall under the jurisdiction of the court in Belgrade. Prices are shown in Serbian dinars (RSD) and include VAT. The seller reserves the right to change prices and to periodically update these terms of purchase.',
         ],
+      },
+      {
+        heading: 'Basic company information',
+        body: [
+          'Full legal name: MEDONI d.o.o. Beograd',
+          'Address: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Belgrade',
+          'Main activity and activity code: 4690 - Non-specialized wholesale trade',
+          'Company registration number: 21548146',
+          'Tax ID (PIB): 111829034',
+          'Website: balkanwarehouse.com',
+          'Phone: +381 62 625 111',
+          'Email: info@balkanwarehouse.com',
+        ],
+      },
+      {
+        heading: 'Currency conversion',
+        body: [
+          'All payments will be effected in Serbian currency – dinar (RSD). The amount your credit card account will be charged for is obtained through the conversion of the price in Euro into Serbian dinar according to the current exchange rate of the Serbian National Bank. When charging your credit card, the same amount is converted into your local currency according to the exchange rate of credit card associations. As a result of this conversion there is a possibility of a slight difference from the original price stated in our web site.',
+        ],
+      },
+      {
+        heading: 'Customer service contact details',
+        body: [
+          'Address: Kneza Višeslava 63, TC Vidikovac Lokal/1.43, Belgrade',
+          'Phone: +381 62 625 111',
+          'Email: info@balkanwarehouse.com',
+          'Customers can contact us here for order information, complaints, or to cancel an order.',
+        ],
+      },
+      {
+        heading: 'Delivery and possible restrictions',
+        body: [
+          'Orders are delivered by courier to the address given in the order, within the Republic of Serbia. Delivery takes 3 to 7 business days from order confirmation, depending on stock availability. Cash on delivery is paid to the courier on receipt. Card payments are reserved on the card when the order is placed, and the account is actually charged only when the order is dispatched.',
+          'We currently do not deliver to addresses outside the Republic of Serbia. A full description of delivery is on the Delivery page.',
+        ],
+      },
+      {
+        heading: 'Complaints and cancellation policy',
+        body: [
+          'Complaints can be sent to info@balkanwarehouse.com or by phone on +381 62 625 111, with a description of the problem, a photo, and your order number. Refunds are paid back the same way the order was paid. The conditions for returns, and the cancellation process, are shown on the Returns page.',
+        ],
+      },
+      {
+        heading: 'Protection of customer privacy',
+        body: [
+          'On behalf of BalkanWarehouse (MEDONI d.o.o.), we undertake to protect the privacy of all our customers. We collect only the necessary, basic data about customers and the data needed to run the business and inform users in line with good business practice and to provide a quality service. We give customers the choice, including whether they want to be removed from mailing lists used for marketing campaigns. All customer data is kept strictly confidential and is available only to employees who need it to do their job. All BalkanWarehouse employees (and business partners) are responsible for respecting the principles of privacy.',
+        ],
+      },
+      {
+        heading: 'Protection of confidential transaction data',
+        body: [
+          'When card details are entered, confidential information is sent over the public network in a protected (encrypted) form using the SSL protocol and PKI system, the most advanced cryptographic technology currently available.',
+          'The card payment processor, Banca Intesa ad Beograd, guarantees the security of purchase data, so the entire charging process takes place on the bank\'s pages. At no point is card data available to our system.',
+        ],
+      },
+      {
+        heading: 'Refunds',
+        body: [
+          'If goods are returned and money is refunded to a customer who paid by one of the payment cards, partly or in full, and regardless of the reason for the return, BalkanWarehouse must make the refund exclusively through the VISA, EC/MC, Maestro, Amex and Dina payment methods. This means the bank will, at the seller\'s request, refund the money to the customer\'s card account.',
+        ],
+      },
+      {
+        heading: 'VAT statement',
+        body: ['VAT is included in the price and there are no hidden costs.'],
       },
     ],
   },

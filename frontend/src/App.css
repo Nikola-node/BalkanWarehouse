@@ -2502,23 +2502,16 @@
   flex-wrap: wrap;
 }
 
-/* Sizes/spacing follow Banca Intesa's own branding rules (Uputstvo 2.2):
-   acceptance marks (this group) sized uniformly within their 37-180 x
-   23-113px range... */
+/* Every card logo in the footer (acceptance marks and program marks alike)
+   gets the same 60x40px box, so all logos share one height and width, as
+   Banca Intesa's EPM check asks. 60px is the smallest width its standard
+   allows for program marks (Visa Secure, MC ID Check, and so on), and the
+   logo is fitted inside the box without stretching it. */
 .site-footer-payment-group img {
-  width: 50px;
-  height: 32px;
+  width: 60px;
+  height: 40px;
   object-fit: contain;
   display: block;
-}
-
-/* ...program marks (Visa Secure/MC ID Check) sized at 60px - the smallest
-   Banca Intesa's own standard allows - since the required gap around them
-   scales with this width (4x), so this also keeps that gap as small as
-   the standard permits. */
-.site-footer-payment-group-secure img {
-  width: 60px;
-  height: 38px;
 }
 
 /* Spacing set directly on the bank logo itself, sitting between the two
@@ -2538,7 +2531,7 @@
 }
 
 .site-footer-bank-logo img {
-  height: 34px;
+  height: 40px;
   width: auto;
   display: block;
 }

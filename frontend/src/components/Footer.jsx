@@ -53,7 +53,7 @@ function Footer() {
         </a>
 
         <div className="site-footer-payment-group site-footer-payment-group-secure">
-          <a href="https://www.mastercard.com/rs/consumer/credit-cards.html" target="_blank" rel="noreferrer">
+          <a href="https://www.mastercard.com/rs/sr/personal/find-a-card.html" target="_blank" rel="noreferrer">
             <img src="/payment-logos/mc-id-check.png" alt="Mastercard ID Check" />
           </a>
           <a
@@ -63,6 +63,8 @@ function Footer() {
           >
             <img src="/payment-logos/visa-secure.png" alt="Visa Secure" />
           </a>
+          <img src="/payment-logos/amex-safekey.png" alt="American Express SafeKey" />
+          <img src="/payment-logos/dina-card-secure.png" alt="DinaCard Secure" />
         </div>
       </div>
 
