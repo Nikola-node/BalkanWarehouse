@@ -19,11 +19,39 @@ const initialForm = {
   note: '',
 }
 
-function FormField({ label, textarea, ...props }) {
+// Shared by both the live per-field check (on blur) and the final check on
+// submit, so a field is never validated two different ways. Each validator
+// returns '' for a valid value, or an error message string otherwise -
+// `error === undefined` (the key isn't in fieldErrors yet) means the field
+// hasn't been checked yet, which FormField reads as "don't show anything".
+const NAME_PATTERN = /^[\p{L}][\p{L} '-]{1,49}$/u
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+const FIELD_VALIDATORS = {
+  firstName: (value) => (NAME_PATTERN.test(value.trim()) ? '' : t('firstNameInvalidError')),
+  lastName: (value) => (NAME_PATTERN.test(value.trim()) ? '' : t('lastNameInvalidError')),
+  phone: (value) => {
+    const digits = value.replace(/\D/g, '')
+    return digits.length >= 6 && digits.length <= 15 ? '' : t('phoneInvalidError')
+  },
+  email: (value) => (EMAIL_PATTERN.test(value.trim()) ? '' : t('emailInvalidError')),
+  address: (value) => (value.trim().length >= 3 ? '' : t('addressInvalidError')),
+  city: (value) => (NAME_PATTERN.test(value.trim()) ? '' : t('cityInvalidError')),
+  zip: (value) => (value.length === 5 ? '' : t('zipInvalidError')),
+}
+
+// The order the validated fields appear in the form - used so a submit with
+// several invalid fields reports the first one a customer would reach.
+const FIELD_ORDER = ['firstName', 'lastName', 'phone', 'email', 'address', 'city', 'zip']
+
+function FormField({ label, textarea, error, ...props }) {
+  const touched = error !== undefined
+  const status = touched ? (error ? 'invalid' : 'valid') : ''
   return (
-    <label className="form-field">
+    <label className={`form-field${status ? ` form-field-${status}` : ''}`}>
       <span className="form-field-label">{label}</span>
       {textarea ? <textarea {...props} /> : <input {...props} />}
+      {status === 'invalid' && <span className="form-field-error">{error}</span>}
     </label>
   )
 }
@@ -179,6 +207,33 @@ function Cart() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  // undefined = not checked yet, '' = valid, a string = the error to show.
+  // Filled in field-by-field as each one is blurred (see validateField
+  // below), and all at once on submit.
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  function validateField(field, value) {
+    const validator = FIELD_VALIDATORS[field]
+    if (!validator) return
+    setFieldErrors((prev) => ({ ...prev, [field]: validator(value) }))
+  }
+
+  // Only digits, spaces, and a single leading "+" are allowed as the
+  // customer types - anything else (letters, extra "+" signs, parentheses)
+  // is dropped immediately rather than caught later at submit time.
+  function handlePhoneChange(e) {
+    const raw = e.target.value
+    const leadingPlus = raw.trimStart().startsWith('+') ? '+' : ''
+    const digitsAndSpaces = raw.replace(/[^0-9 ]/g, '')
+    updateField('phone', leadingPlus + digitsAndSpaces)
+  }
+
+  // Serbian postal codes are digits only, so non-digits are dropped as the
+  // customer types, the same way the phone field filters its input.
+  function handleZipChange(e) {
+    updateField('zip', e.target.value.replace(/\D/g, ''))
+  }
+
   // Without this, Enter in a plain text input inside a <form> submits the
   // form natively - on this page that would place the order. Moving focus
   // to the next field instead both fixes that and gives the requested
@@ -259,6 +314,23 @@ function Cart() {
 
     if (!agreedToTerms) {
       setError(t('agreeToTermsError'))
+      return
+    }
+
+    // Standard shape checks for the rest of the recipient fields - the same
+    // validators the fields already ran on blur, so submitting re-checks
+    // every field (in case one was never visited) and lights up all of them
+    // at once, while the error banner names the first one in form order.
+    const nextFieldErrors = {}
+    let firstMessage = ''
+    for (const field of FIELD_ORDER) {
+      const message = FIELD_VALIDATORS[field](form[field])
+      nextFieldErrors[field] = message
+      if (message && !firstMessage) firstMessage = message
+    }
+    setFieldErrors((prev) => ({ ...prev, ...nextFieldErrors }))
+    if (firstMessage) {
+      setError(firstMessage)
       return
     }
 
@@ -466,38 +538,50 @@ function Cart() {
         <FormField
           label={t('firstName')}
           required
+          error={fieldErrors.firstName}
           value={form.firstName}
           onChange={(e) => updateField('firstName', e.target.value)}
+          onBlur={(e) => validateField('firstName', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('lastName')}
           required
+          error={fieldErrors.lastName}
           value={form.lastName}
           onChange={(e) => updateField('lastName', e.target.value)}
+          onBlur={(e) => validateField('lastName', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('phone')}
           required
           type="tel"
+          inputMode="tel"
+          maxLength={20}
+          error={fieldErrors.phone}
           value={form.phone}
-          onChange={(e) => updateField('phone', e.target.value)}
+          onChange={handlePhoneChange}
+          onBlur={(e) => validateField('phone', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('email')}
           required
           type="email"
+          error={fieldErrors.email}
           value={form.email}
           onChange={(e) => updateField('email', e.target.value)}
+          onBlur={(e) => validateField('email', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('address')}
           required
+          error={fieldErrors.address}
           value={form.address}
           onChange={(e) => updateField('address', e.target.value)}
+          onBlur={(e) => validateField('address', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
@@ -509,15 +593,21 @@ function Cart() {
         <FormField
           label={t('city')}
           required
+          error={fieldErrors.city}
           value={form.city}
           onChange={(e) => updateField('city', e.target.value)}
+          onBlur={(e) => validateField('city', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField
           label={t('zip')}
           required
+          inputMode="numeric"
+          maxLength={5}
+          error={fieldErrors.zip}
           value={form.zip}
-          onChange={(e) => updateField('zip', e.target.value)}
+          onChange={handleZipChange}
+          onBlur={(e) => validateField('zip', e.target.value)}
           onKeyDown={handleFieldKeyDown}
         />
         <FormField

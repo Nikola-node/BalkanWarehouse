@@ -1896,9 +1896,27 @@
 .form-field {
   display: block;
   background: var(--bg);
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 10px 14px 8px;
   margin-bottom: 10px;
+}
+
+/* A field is marked as soon as it's checked (on blur, or on submit) -
+   green once its value passes, red with its message once it doesn't. */
+.form-field-valid {
+  border-color: #1a7a1a;
+}
+
+.form-field-invalid {
+  border-color: #b00020;
+}
+
+.form-field-error {
+  display: block;
+  color: #b00020;
+  font-size: 12px;
+  margin-top: 4px;
 }
 
 .form-field-label {
