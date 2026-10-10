@@ -197,7 +197,7 @@ function App() {
       <ScrollToTop />
       <header className="site-header">
         <Link to="/" className="site-logo">
-          BalkanWarehouse
+          <img src="/header-logo.png" alt="BalkanWarehouse" />
         </Link>
         <SearchBar />
         <div className="site-header-actions">

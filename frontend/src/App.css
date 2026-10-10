@@ -11,10 +11,19 @@
 }
 
 .site-logo {
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  display: block;
   flex: 0 0 auto;
+}
+
+.site-logo img {
+  display: block;
+  height: 110px;
+  width: auto;
+  /* The logo file has faint motion-lines trailing off its left edge before
+     the solid "B" shape - shifted left so the solid shape lines up with the
+     banner/nav edge below it, same as the marked-up reference, with the
+     motion-lines allowed to trail into the side margin. */
+  margin-left: -57px;
 }
 
 .site-header-actions {
@@ -75,8 +84,9 @@
     gap: 10px;
   }
 
-  .site-logo {
-    font-size: 26px;
+  .site-logo img {
+    height: 64px;
+    margin-left: -33px;
   }
 
   .site-header-actions {
@@ -2361,11 +2371,40 @@
 }
 
 .home-contact-cta {
+  position: relative;
+  overflow: hidden;
   margin-top: 48px;
   padding: 40px 24px;
   border: 1px solid var(--border);
   border-radius: 8px;
   text-align: center;
+}
+
+/* Decorative logo marks near the card's left/right edges, roughly where the
+   reference markup circled them, kept fully inside the card (overflow:
+   hidden on the card is the backstop). Hidden on narrower screens, where
+   the card is too narrow for them not to crowd the text. */
+.home-contact-cta-icon {
+  position: absolute;
+  top: 50%;
+  width: 190px;
+  height: auto;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.home-contact-cta-icon-left {
+  left: 16px;
+}
+
+.home-contact-cta-icon-right {
+  right: 16px;
+}
+
+@media (max-width: 900px) {
+  .home-contact-cta-icon {
+    display: none;
+  }
 }
 
 .home-contact-cta h2 {

@@ -176,11 +176,13 @@ function CategoryGrid() {
 function ContactCta() {
   return (
     <section className="home-contact-cta">
+      <img className="home-contact-cta-icon home-contact-cta-icon-left" src="/contact-icon.png" alt="" aria-hidden="true" />
       <h2>{t('homeContactTitle')}</h2>
       <p>{t('homeContactBody')}</p>
       <Link to="/kontakt" className="home-contact-cta-button">
         {t('homeContactButton')}
       </Link>
+      <img className="home-contact-cta-icon home-contact-cta-icon-right" src="/contact-icon.png" alt="" aria-hidden="true" />
     </section>
   )
 }
