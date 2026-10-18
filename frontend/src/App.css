@@ -86,17 +86,24 @@
 
   .site-logo img {
     height: 64px;
-    margin-left: -33px;
+    margin-left: -15px;
   }
 
   .site-header-actions {
-    gap: 16px;
+    gap: 12px;
   }
 
   .site-search-wrap {
     order: 3;
     flex-basis: 100%;
     max-width: none;
+    margin-top: 20px;
+  }
+
+  /* Replaced by the hamburger drawer (MobileMenu) below - its hover-based
+     category submenu doesn't work on touch anyway. */
+  .site-nav-bar {
+    display: none;
   }
 }
 
@@ -192,6 +199,7 @@
 .lang-switcher {
   position: relative;
   flex: 0 0 auto;
+  margin-left: 10px;
 }
 
 .lang-switcher-trigger {
@@ -390,6 +398,90 @@
 .category-menu-count {
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Hamburger trigger + slide-out drawer (phone only - see the 700px rule
+   that turns the trigger on, and that hides the old .site-nav-bar). */
+
+.mobile-menu-trigger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+}
+
+.mobile-menu-panel {
+  width: min(320px, 85vw);
+  height: 100%;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  animation: mobile-menu-slide-in 0.2s ease-out;
+}
+
+@keyframes mobile-menu-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mobile-menu-close {
+  border: none;
+  background: none;
+  padding: 4px;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mobile-menu-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mobile-menu-link {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+@media (max-width: 700px) {
+  .mobile-menu-trigger {
+    display: flex;
+  }
 }
 
 .active-filter-clear {
@@ -624,6 +716,7 @@
 
 .category-filter-tree {
   margin-top: 12px;
+  padding-left: 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -631,7 +724,7 @@
 
 .category-filter-children {
   margin-top: 8px;
-  padding-left: 12px;
+  padding-left: 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -645,7 +738,7 @@
 }
 
 .category-filter-row.depth-0 .category-filter-label {
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .category-filter-row.active .category-filter-label {
@@ -916,14 +1009,7 @@
   }
 }
 
-/* "Novi proizvodi" on the homepage is a quick-browse row, so on a phone it
-   drops only the secondary VAT-inclusive price line and keeps the code,
-   description and stock quantity, matching the compact card layout. */
 @media (max-width: 700px) {
-  .newest-products-card .product-card-price-incl-vat {
-    display: none;
-  }
-
   .newest-products-card .product-card-image {
     margin-bottom: 6px;
   }
@@ -2034,6 +2120,15 @@
        width below its 1320px max-width, so this margin exactly cancels
        its padding rather than needing a 100vw/scrollbar-width trick. */
     margin: 0 -24px;
+  }
+}
+
+/* On a phone, pulls the banner up so the search bar sits closer to it than
+   to the logo above - only the top changes, the edge-to-edge side margins
+   above stay as they are. */
+@media (max-width: 700px) {
+  .hero-carousel-mobile-only {
+    margin-top: -35px;
   }
 }
 

@@ -22,11 +22,6 @@ function LanguageSwitcher() {
   return (
     <div className="lang-switcher" ref={wrapperRef}>
       <button type="button" className="lang-switcher-trigger" onClick={() => setOpen(!open)}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-          <circle cx="12" cy="12" r="9" />
-          <line x1="3" y1="12" x2="21" y2="12" />
-          <path d="M12 3c2.5 2.5 3.8 5.8 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.8-3.8-9s1.3-6.5 3.8-9z" />
-        </svg>
         {current.toUpperCase()}
         <span className={`lang-switcher-chevron ${open ? 'open' : ''}`}>⌄</span>
       </button>

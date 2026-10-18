@@ -6,6 +6,7 @@ import ProductDetail from './components/ProductDetail'
 import Cart from './components/Cart'
 import CategoryMenu from './components/CategoryMenu'
 import LanguageSwitcher from './components/LanguageSwitcher'
+import MobileMenu from './components/MobileMenu'
 import Footer from './components/Footer'
 import LegalPage from './components/LegalPage'
 import Contact from './components/Contact'
@@ -219,6 +220,7 @@ function App() {
           </div>
           <CartIcon />
           <LanguageSwitcher />
+          <MobileMenu />
         </div>
       </header>
 
