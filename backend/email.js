@@ -290,8 +290,13 @@ export async function sendOrderEmails(order) {
   const from = process.env.RESEND_FROM_EMAIL || 'BalkanWarehouse <onboarding@resend.dev>';
   const customerLang = order.customerLang === 'en' ? 'en' : 'sr';
 
-  const notifyTo = process.env.ORDER_NOTIFICATION_EMAIL;
-  if (notifyTo) {
+  // Supports one or several addresses - ORDER_NOTIFICATION_EMAIL can be a
+  // single address or a comma-separated list ("a@x.com,b@y.com").
+  const notifyTo = process.env.ORDER_NOTIFICATION_EMAIL
+    ?.split(',')
+    .map((addr) => addr.trim())
+    .filter(Boolean);
+  if (notifyTo?.length) {
     try {
       const { error } = await resend.emails.send({
         from,
