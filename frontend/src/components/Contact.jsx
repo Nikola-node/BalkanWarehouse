@@ -97,7 +97,7 @@ function Contact() {
         title: t('contactSuccessTitle'),
         text: t('contactSuccessBody'),
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
     } catch {
       setError(t('contactError'))

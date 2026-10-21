@@ -5,7 +5,8 @@ import { t, getLang } from '../i18n'
 import ProductCarousel from './ProductCarousel'
 
 const SLIDE_INTERVAL_MS = 5000
-const NEWEST_INTERVAL_MS = 2000
+const NEWEST_INTERVAL_MS = 3000
+const PICKED_INTERVAL_MS = 2500
 
 // Rebuilt as a plain crossfade: every slide is absolutely-positioned filling
 // the whole box, stacked directly on top of each other, and only its own
@@ -123,7 +124,7 @@ function PickedRows() {
   const [rows, setRows] = useState([])
 
   useEffect(() => {
-    const params = new URLSearchParams({ rows: 5, perRow: 15, lang: getLang() })
+    const params = new URLSearchParams({ rows: 10, perRow: 15, lang: getLang() })
     fetch(`${BACKEND_URL}/api/products/random-rows?${params}`)
       .then((res) => res.json())
       .then((data) => setRows(data.rows))
@@ -135,9 +136,16 @@ function PickedRows() {
   return (
     <div className="picked-products">
       <h2 className="picked-products-title">{t('pickedProducts')}</h2>
-      {rows.map((row) => (
+      {rows.map((row, i) => (
         <section className="newest-products picked-products-row" key={row.id}>
-          <ProductCarousel items={row.items} classPrefix="newest-products" maxVisible={5} showDots />
+          <ProductCarousel
+            items={row.items}
+            classPrefix="newest-products"
+            maxVisible={5}
+            showDots
+            autoAdvanceMs={PICKED_INTERVAL_MS}
+            autoAdvanceDirection={i % 2 === 0 ? 'right' : 'left'}
+          />
         </section>
       ))}
     </div>

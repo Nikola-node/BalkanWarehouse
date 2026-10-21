@@ -34,7 +34,7 @@ function visibleCardsFor(width, maxVisible) {
 // both ends to make the wrap-around loop seamless - that makes the track
 // wider than the visible viewport, so a percentage on a card would resolve
 // against the track's width, not the viewport's.
-function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = false, autoAdvanceMs, showDots = false }) {
+function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = false, autoAdvanceMs, autoAdvanceDirection = 'left', showDots = false }) {
   // `slot` indexes into the extended (clone-padded) track below - the real
   // product it points to is `slot - visible`, wrapped into range.
   const [slot, setSlot] = useState(maxVisible)
@@ -96,7 +96,7 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
         if (busyRef.current) return
         busyRef.current = true
         setSlideMs(AUTO_SLIDE_MS)
-        setSlot((s) => s + 1)
+        setSlot((s) => (autoAdvanceDirection === 'right' ? s - 1 : s + 1))
       }, autoAdvanceMs)
     }
     function stop() {
@@ -113,7 +113,7 @@ function ProductCarousel({ items, classPrefix, maxVisible = 5, isNewBadge = fals
       stop()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [items.length, visible, autoAdvanceMs])
+  }, [items.length, visible, autoAdvanceMs, autoAdvanceDirection])
 
   if (items.length === 0) return null
 

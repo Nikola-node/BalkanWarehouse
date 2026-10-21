@@ -38,6 +38,15 @@ export function removeOrder(orderNumber) {
   return getOrders();
 }
 
+// One file write for the whole batch instead of one per order, so deleting
+// many at once from the admin panel doesn't hit disk N times.
+export function removeOrders(orderNumbers) {
+  const toRemove = new Set(orderNumbers);
+  cachedOrders = cachedOrders.filter((o) => !toRemove.has(o.orderNumber));
+  persist();
+  return getOrders();
+}
+
 export function getOrder(orderNumber) {
   return cachedOrders.find((o) => o.orderNumber === orderNumber) || null;
 }

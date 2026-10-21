@@ -193,7 +193,7 @@ function ProductDetail() {
         icon: 'error',
         text: `${t('stockLimit')} ${availableQty} ${t('pieces')}`,
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
       return
     }
@@ -211,7 +211,7 @@ function ProductDetail() {
             ? `${t('invalidQuantityPrefix')} ${[...packageSizes].sort((a, b) => a - b).join(', ')} ${t('pieces')}`
             : t('invalidQuantity'),
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
       return
     }
@@ -232,7 +232,7 @@ function ProductDetail() {
       icon: 'success',
       text: t('addedToCart'),
       confirmButtonText: 'OK',
-      confirmButtonColor: '#111111',
+      confirmButtonColor: '#02192a',
     })
   }
 

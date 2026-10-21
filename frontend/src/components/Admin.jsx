@@ -35,6 +35,9 @@ function Admin() {
   const [deletingOrderId, setDeletingOrderId] = useState('')
   const [actingOrderId, setActingOrderId] = useState('')
   const [actionError, setActionError] = useState('')
+  const [selectedOrderIds, setSelectedOrderIds] = useState([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const recaptchaRef = useRef(null)
   const widgetId = useRef(null)
@@ -129,9 +132,73 @@ function Admin() {
         return
       }
       const data = await res.json()
-      if (res.ok) setOrders(data.items)
+      if (res.ok) {
+        setOrders(data.items)
+        setSelectedOrderIds((ids) => ids.filter((id) => id !== orderNumber))
+      }
     } finally {
       setDeletingOrderId('')
+    }
+  }
+
+  // No selection -> exports every order; a selection -> only those, same
+  // scoping rule as the bulk-delete button right next to it.
+  async function handleExportOrders() {
+    setExporting(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/orders/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderNumbers: selectedOrderIds }),
+      })
+      if (res.status === 401) {
+        forceLogout()
+        return
+      }
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'porudzbine.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  function toggleOrderSelected(orderNumber) {
+    setSelectedOrderIds((ids) =>
+      ids.includes(orderNumber) ? ids.filter((id) => id !== orderNumber) : [...ids, orderNumber],
+    )
+  }
+
+  function toggleSelectAll() {
+    setSelectedOrderIds((ids) => (ids.length === orders.length ? [] : orders.map((o) => o.orderNumber)))
+  }
+
+  async function handleBulkDelete() {
+    if (selectedOrderIds.length === 0) return
+    if (!window.confirm(`Obrisati ${selectedOrderIds.length} izabranih porudžbina? Ovo se ne može poništiti.`)) return
+    setBulkDeleting(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/orders`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ orderNumbers: selectedOrderIds }),
+      })
+      if (res.status === 401) {
+        forceLogout()
+        return
+      }
+      const data = await res.json()
+      if (res.ok) {
+        setOrders(data.items)
+        setSelectedOrderIds([])
+      }
+    } finally {
+      setBulkDeleting(false)
     }
   }
 
@@ -295,7 +362,22 @@ function Admin() {
 
       {view === 'orders' ? (
         <div className="admin-card admin-orders-card">
-          <h2>Narudžbine</h2>
+          <div className="admin-orders-header">
+            <h2>Narudžbine</h2>
+            {orders.length > 0 && (
+              <button type="button" className="admin-orders-action" onClick={handleExportOrders} disabled={exporting}>
+                Export to .csv
+              </button>
+            )}
+            {selectedOrderIds.length > 0 && (
+              <div className="admin-orders-bulk-bar">
+                <span>{selectedOrderIds.length} izabrano</span>
+                <button type="button" className="admin-orders-action admin-orders-action-void" onClick={handleBulkDelete} disabled={bulkDeleting}>
+                  {bulkDeleting ? 'Brisanje...' : 'Obriši izabrane'}
+                </button>
+              </div>
+            )}
+          </div>
           {actionError && <p className="admin-error">{actionError}</p>}
           {loadingOrders ? (
             <p>Učitavanje...</p>
@@ -306,12 +388,21 @@ function Admin() {
               <table className="admin-orders-table">
                 <thead>
                   <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        checked={selectedOrderIds.length === orders.length}
+                        onChange={toggleSelectAll}
+                        aria-label="Izaberi sve"
+                      />
+                    </th>
                     <th>Ime i prezime</th>
                     <th>Broj narudžbine</th>
                     <th>Datum</th>
                     <th>Artikli</th>
                     <th>Iznos</th>
                     <th>Telefon</th>
+                    <th>Email</th>
                     <th>Mesto</th>
                     <th>Adresa</th>
                     <th>Plaćanje</th>
@@ -328,6 +419,14 @@ function Admin() {
                     return (
                       <tr key={order.orderNumber}>
                         <td>
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.orderNumber)}
+                            onChange={() => toggleOrderSelected(order.orderNumber)}
+                            aria-label={`Izaberi porudžbinu ${order.orderNumber}`}
+                          />
+                        </td>
+                        <td>
                           {order.customer?.firstName} {order.customer?.lastName}
                         </td>
                         <td>{order.orderNumber}</td>
@@ -343,6 +442,7 @@ function Admin() {
                         </td>
                         <td>{grandTotalRsd.toLocaleString('sr-RS')} RSD</td>
                         <td>{order.customer?.phone}</td>
+                        <td>{order.customer?.email}</td>
                         <td>{order.customer?.city}</td>
                         <td>{order.customer?.address}</td>
                         <td>{order.paymentMethod === 'card' ? 'Kartica' : 'Pouzeće'}</td>

@@ -27,7 +27,7 @@ function OrderResult({ success }) {
         text: t('printNoticeBody'),
         showCloseButton: true,
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

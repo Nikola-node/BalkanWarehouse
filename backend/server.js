@@ -12,7 +12,7 @@ import { getSettings, updateSettings } from './settings.js';
 import { getDeliveryCost, getDeliveryTiers } from './delivery.js';
 import { checkPassword, createSession, destroySession, requireAdmin } from './adminAuth.js';
 import { getAds, addAd, removeAd, updateAdLink, AD_IMAGES_DIR } from './ads.js';
-import { getOrders, addOrder, removeOrder, getOrder, updateOrder } from './orders.js';
+import { getOrders, addOrder, removeOrder, removeOrders, getOrder, updateOrder } from './orders.js';
 import { buildPaymentFields, verifyResponseHash, capturePayment, voidPayment, refundPayment, nestpayConfig } from './nestpay.js';
 
 const app = express();
@@ -73,6 +73,86 @@ app.get('/api/admin/orders', requireAdmin, (req, res) => {
 
 app.delete('/api/admin/orders/:orderNumber', requireAdmin, (req, res) => {
   res.json({ items: removeOrder(req.params.orderNumber) });
+});
+
+// Bulk delete for the admin panel's multi-select - body is
+// { orderNumbers: [...] }, deleted in one file write rather than one
+// request per order.
+app.delete('/api/admin/orders', requireAdmin, (req, res) => {
+  const orderNumbers = Array.isArray(req.body?.orderNumbers) ? req.body.orderNumbers : [];
+  res.json({ items: removeOrders(orderNumbers) });
+});
+
+const ORDER_STATUS_LABELS_SR = {
+  pending: 'Nova',
+  paid: 'Rezervisano',
+  failed: 'Neuspešno',
+  captured: 'Naplaćeno',
+  voided: 'Otkazano',
+  refunded: 'Povraćeno',
+};
+
+// Wraps a value as a CSV field - quoted (with internal quotes doubled)
+// whenever it contains the delimiter, a quote, or a newline, left bare
+// otherwise so plain values stay readable in the raw file.
+function csvField(value) {
+  const s = String(value ?? '');
+  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Exports the whole order list, or just a chosen subset, as a semicolon-
+// delimited CSV - Excel opens this natively (double-click or File > Open)
+// and, unlike a real .xlsx, it needs no extra library, so there's nothing
+// here that can go stale or carry a dependency vulnerability. Semicolons
+// rather than commas because Excel in a sr-RS locale uses comma as the
+// decimal separator and expects ';' as the list delimiter.
+app.post('/api/admin/orders/export', requireAdmin, (req, res) => {
+  const orderNumbers = Array.isArray(req.body?.orderNumbers) ? req.body.orderNumbers : [];
+  const wanted = orderNumbers.length > 0 ? new Set(orderNumbers) : null;
+  const rate = getSettings().eurToRsdRate;
+  const orders = getOrders().filter((o) => !wanted || wanted.has(o.orderNumber));
+
+  const header = [
+    'Ime i prezime',
+    'Broj narudžbine',
+    'Datum',
+    'Artikli',
+    'Iznos',
+    'Telefon',
+    'Email',
+    'Mesto',
+    'Adresa',
+    'Plaćanje',
+    'Status',
+  ];
+
+  const rows = orders.map((order) => {
+    const itemsCostRsd = Math.round(order.total * rate);
+    const grandTotalRsd = itemsCostRsd + (order.deliveryCostRsd || 0);
+    const items = (order.items || []).map((item) => `${item.name} × ${item.quantity}`).join(' | ');
+    return [
+      `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim(),
+      order.orderNumber,
+      new Date(order.createdAt).toLocaleDateString('sr-RS'),
+      items,
+      `${grandTotalRsd.toLocaleString('sr-RS')} RSD`,
+      order.customer?.phone || '',
+      order.customer?.email || '',
+      order.customer?.city || '',
+      order.customer?.address || '',
+      order.paymentMethod === 'card' ? 'Kartica' : 'Pouzeće',
+      ORDER_STATUS_LABELS_SR[order.status] || order.status || '',
+    ];
+  });
+
+  const csv = [header, ...rows].map((row) => row.map(csvField).join(';')).join('\r\n');
+  // UTF-8 BOM so Excel recognizes the encoding and shows č/ć/š/ž/đ
+  // correctly instead of mangling them.
+  const buffer = Buffer.concat([Buffer.from('﻿', 'utf-8'), Buffer.from(csv, 'utf-8')]);
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="porudzbine.csv"`);
+  res.send(buffer);
 });
 
 // Only meaningful for a card order still sitting at "paid" (i.e. preAuth'd/

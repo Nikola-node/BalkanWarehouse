@@ -255,7 +255,7 @@ function Cart() {
       showCancelButton: true,
       confirmButtonText: t('yes'),
       cancelButtonText: t('no'),
-      confirmButtonColor: '#111111',
+      confirmButtonColor: '#02192a',
       cancelButtonColor: '#999999',
     }).then((result) => {
       if (result.isConfirmed) {
@@ -284,7 +284,7 @@ function Cart() {
         icon: 'error',
         text: `${t('stockLimit')} ${item.stockQty} ${t('pieces')}`,
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
       return
     }
@@ -392,7 +392,7 @@ function Cart() {
         text: t('printNoticeBody'),
         showCloseButton: true,
         confirmButtonText: 'OK',
-        confirmButtonColor: '#111111',
+        confirmButtonColor: '#02192a',
       })
     } catch {
       setError(t('orderError'))

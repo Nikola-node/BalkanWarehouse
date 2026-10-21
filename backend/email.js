@@ -62,6 +62,7 @@ const STRINGS = {
     procReturnCode: 'Kod statusa transakcije',
     mdStatus: 'Statusni kod 3D transakcije',
     transactionDate: 'Datum transakcije',
+    fiscalReceiptNotice: 'Fiskalni račun će biti poslat zajedno sa porudžbinom.',
     unattendedMailbox: 'Napomena: Molimo Vas da ne odgovarate na ovaj e-mail. Poruka je poslata sa nenadgledanog poštanskog sandučeta, pa odgovori neće biti pročitani. Za sva pitanja pišite na',
     locale: 'sr-RS',
   },
@@ -109,6 +110,7 @@ const STRINGS = {
     procReturnCode: 'Transaction status code',
     mdStatus: '3D transaction status code',
     transactionDate: 'Transaction date',
+    fiscalReceiptNotice: 'The fiscal receipt will be sent together with the order.',
     unattendedMailbox: 'Please note: Do not reply to this email. This email is sent from an unattended mailbox, so replies will not be read. For any questions, write to',
     locale: 'en-US',
   },
@@ -269,7 +271,10 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
       </tr>
     </table>
     ${customerCopy ? `
-    <p style="margin-top: 24px; padding-top: 12px; border-top: 1px solid #eee; color: #555; font-size: 13px;">
+    <p style="margin-top: 24px; padding: 10px 14px; border-radius: 6px; background: #eaf7ea; color: #1a7a1a; font-weight: bold; font-size: 13.5px;">
+      ${t.fiscalReceiptNotice}
+    </p>
+    <p style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; color: #555; font-size: 13px;">
       ${t.unattendedMailbox} <a href="mailto:${SELLER.email}" style="color: #555;">${SELLER.email}</a>.
     </p>` : ''}
   </div>`;

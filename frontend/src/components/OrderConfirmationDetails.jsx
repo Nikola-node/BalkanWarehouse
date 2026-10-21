@@ -28,6 +28,8 @@ function OrderConfirmationDetails({ orderNumber, showTransaction }) {
 
   return (
     <div className="order-confirmation">
+      <p className="order-confirmation-fiscal-notice">{t('fiscalReceiptNotice')}</p>
+
       {showTransaction && payment && (
         <p className="order-confirmation-outcome">
           {payment.response === 'Approved' ? t('paymentApproved') : t('paymentDeclined')}
