@@ -2086,6 +2086,16 @@
   min-height: 44px;
 }
 
+.admin-remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
 .recaptcha-box {
   display: flex;
   justify-content: center;

@@ -2,6 +2,52 @@ import { useEffect, useRef, useState } from 'react'
 import { BACKEND_URL, RECAPTCHA_SITE_KEY } from '../config'
 import AdsManager from './AdsManager'
 
+// Only used when "Ostani prijavljen" is checked at login - otherwise the
+// token stays in plain React state (see the note on Admin() below). Scoped
+// to its own key so it can't collide with anything else the site stores.
+const ADMIN_TOKEN_STORAGE_KEY = 'balkanwarehouse_admin_token'
+
+function readStoredToken() {
+  try {
+    return localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+function writeStoredToken(token) {
+  try {
+    if (token) localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token)
+    else localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY)
+  } catch {
+    // Private mode / blocked storage - "stay logged in" just silently
+    // doesn't persist, same as if the box had been left unchecked.
+  }
+}
+
+// Which tab (Podešavanja/Narudžbine/...) was open, so a refresh lands back
+// where you were instead of resetting to the first tab - sessionStorage
+// rather than localStorage since this only needs to survive a refresh of
+// this tab, not follow the login across devices/sessions.
+const ADMIN_VIEW_STORAGE_KEY = 'balkanwarehouse_admin_view'
+
+function readStoredView() {
+  try {
+    return sessionStorage.getItem(ADMIN_VIEW_STORAGE_KEY) || 'settings'
+  } catch {
+    return 'settings'
+  }
+}
+
+function writeStoredView(view) {
+  try {
+    sessionStorage.setItem(ADMIN_VIEW_STORAGE_KEY, view)
+  } catch {
+    // Private mode / blocked storage - just won't restore across a
+    // refresh, same as before this feature existed.
+  }
+}
+
 const ORDER_STATUS_LABELS = {
   pending: 'Nova',
   paid: 'Rezervisano',
@@ -19,8 +65,14 @@ const ORDER_STATUS_LABELS = {
 // meant to require logging in again every time this page is visited, even
 // within the same browser session, rather than silently staying signed in.
 function Admin() {
-  const [token, setToken] = useState('')
+  // Picks up a token saved by a previous "Ostani prijavljen" login - if
+  // none was saved (the default), this is '' and the login form shows as
+  // before. The backend's own 12h session expiry is what keeps this from
+  // meaning "logged in forever" - once that lapses, the next request 401s
+  // and forceLogout() below clears both this and the stored copy.
+  const [token, setToken] = useState(readStoredToken)
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [loginError, setLoginError] = useState('')
   const [loggingIn, setLoggingIn] = useState(false)
   const [rateInput, setRateInput] = useState('')
@@ -28,7 +80,7 @@ function Admin() {
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
-  const [view, setView] = useState('settings')
+  const [view, setView] = useState(readStoredView)
   const [orders, setOrders] = useState([])
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [ordersLoaded, setOrdersLoaded] = useState(false)
@@ -66,8 +118,14 @@ function Admin() {
     return () => clearInterval(interval)
   }, [token])
 
+  function changeView(nextView) {
+    setView(nextView)
+    writeStoredView(nextView)
+  }
+
   function forceLogout() {
     setToken('')
+    writeStoredToken('')
     // The login form (and its recaptcha container div) unmounts while
     // logged in and gets a fresh DOM node on the way back - without
     // clearing this, the render effect would see a stale widget id and
@@ -262,6 +320,7 @@ function Admin() {
       const data = await res.json()
       setToken(data.token)
       setPassword('')
+      writeStoredToken(rememberMe ? data.token : '')
     } finally {
       setLoggingIn(false)
     }
@@ -316,6 +375,10 @@ function Admin() {
               autoFocus
             />
           </label>
+          <label className="admin-remember-me">
+            <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+            Ostani prijavljen na ovom uređaju
+          </label>
           <div className="recaptcha-box">
             {RECAPTCHA_SITE_KEY ? (
               <div ref={recaptchaRef} />
@@ -343,14 +406,14 @@ function Admin() {
           <button
             type="button"
             className={`admin-tab ${view === 'settings' ? 'active' : ''}`}
-            onClick={() => setView('settings')}
+            onClick={() => changeView('settings')}
           >
             Podešavanja
           </button>
           <button
             type="button"
             className={`admin-tab ${view === 'orders' ? 'active' : ''}`}
-            onClick={() => setView('orders')}
+            onClick={() => changeView('orders')}
           >
             Narudžbine
           </button>
