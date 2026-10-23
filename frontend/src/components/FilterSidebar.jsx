@@ -12,7 +12,7 @@ import PackageSizeFilter from './PackageSizeFilter'
 // dropdown toggles it) since on mobile that pill sits outside this
 // component entirely - only mattering on mobile, CSS keeps the panel always
 // visible on desktop regardless of its value.
-function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, packageSize = '', mobileOpen, onChange }) {
+function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, packageSize = '', mobileOpen, onChange, onCloseMobile }) {
   const { eurFromRsd, rsdFromEur } = useCurrency()
   const [minInput, setMinInput] = useState(minPrice ? Math.round(rsdFromEur(minPrice)) : minPrice)
   const [maxInput, setMaxInput] = useState(maxPrice ? Math.round(rsdFromEur(maxPrice)) : maxPrice)
@@ -52,7 +52,16 @@ function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, packageSize =
         )}
       </div>
 
-      <CategoryFilterTree nodeId={nodeId} onSelect={(id) => onChange({ nodeId: id })} />
+      <CategoryFilterTree
+        nodeId={nodeId}
+        onSelect={(id) => {
+          onChange({ nodeId: id })
+          // Only picking a category closes the mobile panel - price/stock/
+          // package filters leave it open since those are often adjusted a
+          // few times in a row before the customer wants to see results.
+          onCloseMobile?.()
+        }}
+      />
 
       <div className="filter-sidebar-section">
         <h4>{t('priceRange')}</h4>
@@ -86,7 +95,14 @@ function FilterSidebar({ nodeId = '', minPrice, maxPrice, inStock, packageSize =
         </label>
       </div>
 
-      <PackageSizeFilter packageSize={packageSize} onSelect={(size) => onChange({ packageSize: size })} />
+      <PackageSizeFilter
+        nodeId={nodeId}
+        minPrice={minPrice}
+        maxPrice={maxPrice}
+        inStock={inStock}
+        packageSize={packageSize}
+        onSelect={(size) => onChange({ packageSize: size })}
+      />
     </aside>
   )
 }

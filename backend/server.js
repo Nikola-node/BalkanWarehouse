@@ -304,11 +304,18 @@ app.get('/api/categories', (req, res) => {
   res.json(localize(getCategoryTree()));
 });
 
-// Every distinct package size (pieces per package) across the catalog, for
-// the "Veličina pakovanja" filter - independent of any other active filter,
-// same as /api/categories.
+// Every distinct package size (pieces per package) for the "Veličina
+// pakovanja" filter, scoped to whatever other filters (category, search,
+// price, in-stock) are currently active - the same query params /api/products
+// takes, minus packageSize itself (a facet never filters by itself).
 app.get('/api/package-sizes', (req, res) => {
-  res.json({ items: getPackageSizes() });
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const nodeId = req.query.nodeId || undefined;
+  const q = req.query.q || undefined;
+  const minPrice = req.query.minPrice !== undefined ? Number(req.query.minPrice) : undefined;
+  const maxPrice = req.query.maxPrice !== undefined ? Number(req.query.maxPrice) : undefined;
+  const inStock = req.query.inStock === '1';
+  res.json({ items: getPackageSizes({ lang, nodeId, q, minPrice, maxPrice, inStock }) });
 });
 
 app.get('/api/products/featured', (req, res) => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams, useLocation, useNavigationType } from 'react-router-dom'
 import { BACKEND_URL } from '../config'
 import { t, getLang } from '../i18n'
@@ -32,7 +32,6 @@ function ProductGrid() {
   // dropdown toggles it, and CSS keeps the filter panel always visible on
   // desktop regardless of its value there.
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const gridTopRef = useRef(null)
 
   const activeFilterCount =
     (nodeId ? 1 : 0) + (minPrice || maxPrice ? 1 : 0) + (inStock ? 1 : 0) + (packageSize ? 1 : 0)
@@ -96,8 +95,11 @@ function ProductGrid() {
   // Changing filters/sort/page swaps the grid's contents in place - without
   // this, someone scrolled halfway down could click a filter and not notice
   // the results changed above/below what they're currently looking at.
+  // Scrolls the whole window, not just this ref into view - scrollIntoView
+  // on the grid itself used to land just below the toolbar, cutting off the
+  // first row of products on mobile instead of showing the full page top.
   function scrollToGridTop() {
-    gridTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function clearFilters() {
@@ -122,7 +124,13 @@ function ProductGrid() {
       }
     }
     setSearchParams(next)
-    scrollToGridTop()
+    // Picking a new category replaces the whole result set, so landing back
+    // at the top makes sense there (and on mobile it also closes the filter
+    // panel, via onCloseMobile in FilterSidebar). Every other filter - price,
+    // in-stock, package size, sort - swaps the grid in place while the
+    // sidebar/toolbar the customer is still using stays put, so it shouldn't
+    // yank the page out from under them.
+    if ('nodeId' in changes) scrollToGridTop()
   }
 
   return (
@@ -152,7 +160,7 @@ function ProductGrid() {
         <SortBar sort={sort} onChange={updateFilters} />
       </div>
 
-      <div ref={gridTopRef} className="product-page">
+      <div className="product-page">
         <FilterSidebar
           nodeId={nodeId}
           minPrice={minPrice}
@@ -161,6 +169,7 @@ function ProductGrid() {
           packageSize={packageSize}
           mobileOpen={mobileFiltersOpen}
           onChange={updateFilters}
+          onCloseMobile={() => setMobileFiltersOpen(false)}
         />
 
         <div className="product-main">

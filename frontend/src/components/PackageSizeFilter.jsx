@@ -2,20 +2,27 @@ import { useEffect, useState } from 'react'
 import { BACKEND_URL } from '../config'
 import { t } from '../i18n'
 
-// Lists every distinct package size (pieces per package) across the whole
-// catalog - picking one shows only products that ship in that size,
-// mirroring how CategoryFilterTree lists every category up front rather
-// than only the ones matching other active filters.
-function PackageSizeFilter({ packageSize, onSelect }) {
+// Lists every distinct package size (pieces per package) among products
+// matching the *other* currently active filters - unlike CategoryFilterTree
+// (which always lists every category up front), this one has to be rescoped
+// live: a wrong/global count here used to show sizes with zero matches once
+// a category was picked, so picking them visibly returned nothing.
+function PackageSizeFilter({ nodeId, minPrice, maxPrice, inStock, packageSize, onSelect }) {
   const [sizes, setSizes] = useState([])
   const [sectionOpen, setSectionOpen] = useState(true)
 
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/package-sizes`)
+    const params = new URLSearchParams()
+    if (nodeId) params.set('nodeId', nodeId)
+    if (minPrice != null && minPrice !== '') params.set('minPrice', minPrice)
+    if (maxPrice != null && maxPrice !== '') params.set('maxPrice', maxPrice)
+    if (inStock) params.set('inStock', '1')
+
+    fetch(`${BACKEND_URL}/api/package-sizes?${params}`)
       .then((res) => res.json())
       .then((data) => setSizes(data.items))
       .catch(() => {})
-  }, [])
+  }, [nodeId, minPrice, maxPrice, inStock])
 
   if (sizes.length === 0) return null
 

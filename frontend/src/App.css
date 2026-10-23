@@ -778,7 +778,7 @@
 
 .category-filter-row.active .category-filter-label {
   color: var(--text);
-  text-decoration: underline;
+  font-weight: 700;
 }
 
 .category-filter-label {
@@ -2169,12 +2169,6 @@
 
   .hero-carousel-mobile-only {
     display: block;
-    /* Breaks out of .site-content's 24px side padding so the banner runs
-       edge to edge instead of staying boxed in at the same width as the
-       search bar/nav above it - .site-content is already full viewport
-       width below its 1320px max-width, so this margin exactly cancels
-       its padding rather than needing a 100vw/scrollbar-width trick. */
-    margin: 0 -24px;
   }
 }
 
@@ -2183,7 +2177,7 @@
    above stay as they are. */
 @media (max-width: 700px) {
   .hero-carousel-mobile-only {
-    margin-top: -35px;
+    margin-top: -10px;
   }
 }
 
@@ -2597,17 +2591,6 @@
 
 
 @media (max-width: 700px) {
-  /* A small white margin around the ad; contain keeps its 4:5 shape, so it
-     shrinks evenly instead of being cropped. */
-  .hero-carousel-mobile .hero-slide {
-    inset: 12px;
-  }
-
-  .hero-carousel-mobile .hero-slide-image {
-    object-fit: contain;
-    border-radius: 10px;
-  }
-
   .hero-slide h1 {
     font-size: 22px;
   }

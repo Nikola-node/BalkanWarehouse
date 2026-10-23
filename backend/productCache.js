@@ -9,7 +9,6 @@ let cachedGroupedProducts = { sr: [], en: [] };
 let cachedColors = { sr: [], en: [] };
 let cachedShades = { sr: [], en: [] };
 let cachedCategoryTree = [];
-let cachedPackageSizes = [];
 let cachedStockByProduct = new Map();
 let lastRefreshedAt = null;
 
@@ -51,11 +50,13 @@ function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
         imageHover: info?.imageHover || null,
         stockQty,
         colorCodes: new Set(p.Color ? [p.Color] : []),
-        // How many pieces come per package (Promobox's `Carton` field) -
-        // shown to the customer as "Pakovanje" on the spec tab. Kept as a
-        // set since, rarely, different color/size variants of the same
-        // model ship in different package sizes.
-        packageSizes: new Set(p.Carton ? [p.Carton] : []),
+        // The commercial/retail package size (Promobox's `CommercialPackage`
+        // field) - e.g. a mug sold individually is 1 even though it ships
+        // in cartons of 36 (that's `Carton`, a separate field, shown as
+        // "Karton" on the spec tab and used for logistics, not for this
+        // filter). Kept as a set since, rarely, different color/size
+        // variants of the same model have different commercial package sizes.
+        packageSizes: new Set(p.CommercialPackage ? [p.CommercialPackage] : []),
         createdAt: p.Created,
       };
       group.categoryPath = classify({
@@ -70,7 +71,7 @@ function groupByModel(products, modelInfo, stockByProduct, colorInfo) {
       existing.variantIds.push(p.Id);
       existing.stockQty += stockQty;
       if (p.Color) existing.colorCodes.add(p.Color);
-      if (p.Carton) existing.packageSizes.add(p.Carton);
+      if (p.CommercialPackage) existing.packageSizes.add(p.CommercialPackage);
       if (p.Created < existing.createdAt) existing.createdAt = p.Created;
     }
   }
@@ -186,11 +187,11 @@ export function getCategoryTree() {
   return cachedCategoryTree;
 }
 
-// Distinct package sizes (pieces per package) across the whole catalog, each
-// with how many products carry it - lets the filter sidebar list every size
-// a customer could actually pick, like buildCategoryTree does for
-// categories. Built once from the Serbian grouped list since a package size
-// is a plain number, not language-dependent.
+// Distinct package sizes (pieces per package) among the given products, each
+// with how many of them carry it - lets the filter sidebar list every size a
+// customer could actually pick from whatever's currently matching their
+// other filters, the same way the count next to each category only makes
+// sense scoped to what's actually being browsed.
 function buildPackageSizeOptions(groupedProducts) {
   const counts = new Map();
   for (const p of groupedProducts) {
@@ -203,8 +204,16 @@ function buildPackageSizeOptions(groupedProducts) {
     .sort((a, b) => a.size - b.size);
 }
 
-export function getPackageSizes() {
-  return cachedPackageSizes;
+// Computed fresh per call rather than cached, scoped to whatever other
+// filters (category, search, price, in-stock) are currently active - e.g.
+// picking a category that only ever ships in boxes of 12+ should no longer
+// show a global "1 pcs (61)" that then returns zero results when clicked.
+// Cheap enough to recompute on every request at this catalog size (~1,500
+// grouped products), so no caching needed. Package size itself is excluded
+// from the filters applied here, same as a facet never filters by itself.
+export function getPackageSizes({ lang = 'sr', nodeId, q, minPrice, maxPrice, inStock } = {}) {
+  const products = applyBaseFilters(cachedGroupedProducts[lang], { nodeId, q, minPrice, maxPrice, inStock });
+  return buildPackageSizeOptions(products);
 }
 
 // The newest products overall tend to cluster in whichever category
@@ -383,7 +392,6 @@ export async function refreshProducts() {
     }
 
     cachedCategoryTree = buildCategoryTree(cachedGroupedProducts.sr);
-    cachedPackageSizes = buildPackageSizeOptions(cachedGroupedProducts.sr);
 
     const unmapped = getUnmappedCombos();
     if (unmapped.length > 0) {
