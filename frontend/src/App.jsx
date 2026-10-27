@@ -98,7 +98,7 @@ function SearchBar() {
   function goToSuggestion(item) {
     setOpen(false)
     setQuery('')
-    navigate(`/product/${item.variantIds[0]}`)
+    navigate(`/product/${encodeURIComponent(item.model)}`)
   }
 
   function handleSubmit(e) {
@@ -236,7 +236,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/proizvodi" element={<ProductGrid />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/product/:model" element={<ProductDetail />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/porudzbina/uspesna" element={<OrderResult success />} />
           <Route path="/porudzbina/neuspesna" element={<OrderResult success={false} />} />

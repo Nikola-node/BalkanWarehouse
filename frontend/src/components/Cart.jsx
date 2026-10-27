@@ -433,7 +433,7 @@ function Cart() {
       <ul className="cart-items">
         {items.map((item) => (
           <li key={item.id} className="cart-item">
-            <Link to={`/product/${item.id}`} className="cart-item-link">
+            <Link to={`/product/${encodeURIComponent(item.model)}`} className="cart-item-link">
               <img src={item.image} alt={item.name} className="cart-item-image" />
               <div className="cart-item-info">
                 <p className="cart-item-name">{item.name}</p>

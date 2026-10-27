@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { BACKEND_URL } from '../config'
 import { t, getLang } from '../i18n'
@@ -9,13 +9,24 @@ import { canFormQuantity, parsePackageSizes } from '../packageQuantity'
 import { swatchColor } from '../colorSwatch'
 import PrintNotice from './PrintNotice'
 import ProductCarousel from './ProductCarousel'
+import NotFound from './NotFound'
 
 const LENS_SIZE = 200
 const LENS_ZOOM = 2.2
 
 function ProductDetail() {
-  const { id } = useParams()
-  const navigate = useNavigate()
+  const { model } = useParams()
+  // The URL only ever carries the Model name (see App.jsx's route and the
+  // backend's /api/products/resolve/:model) - this is which exact SKU
+  // (color+size) is currently shown, resolved from that model on load and
+  // then updated locally whenever the customer picks a different color or
+  // size, without touching the URL.
+  const [selectedId, setSelectedId] = useState(null)
+  // True once the resolve step below comes back without a match - a URL for
+  // a model that doesn't exist used to leave the page stuck showing
+  // "Loading..." forever, since nothing ever set `product` and nothing ever
+  // would.
+  const [notFound, setNotFound] = useState(false)
   const { addItem, items: cartItems } = useCart()
   const { formatPrice, formatPriceExclVat } = useCurrency()
   const [product, setProduct] = useState(null)
@@ -75,6 +86,28 @@ function ProductDetail() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [galleryActive])
 
+  // Resolves the URL's Model name to one representative SKU id - a cheap,
+  // local-cache-only lookup (see /api/products/resolve/:model). Re-runs only
+  // when the URL itself changes (a genuinely different product), not on
+  // every color/size pick within one product.
+  useEffect(() => {
+    let cancelled = false
+    setNotFound(false)
+    fetch(`${BACKEND_URL}/api/products/resolve/${encodeURIComponent(model)}?lang=${getLang()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        if (data.id) setSelectedId(data.id)
+        else setNotFound(true)
+      })
+      .catch(() => {
+        if (!cancelled) setNotFound(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [model])
+
   // Keeps showing the previous variant's page while the new one loads,
   // instead of blanking everything back to a bare loading message - the
   // gallery, description, specs, documentation and similar products rarely
@@ -83,9 +116,10 @@ function ProductDetail() {
   // guards against an older request (e.g. from a color clicked a moment ago)
   // resolving after a newer one and overwriting it with stale data.
   useEffect(() => {
+    if (!selectedId) return
     let cancelled = false
     setLoading(true)
-    fetch(`${BACKEND_URL}/api/products/${id}?lang=${getLang()}`)
+    fetch(`${BACKEND_URL}/api/products/${encodeURIComponent(selectedId)}?lang=${getLang()}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return
@@ -100,11 +134,17 @@ function ProductDetail() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [selectedId])
 
+  // Similar products are a function of the model/category, not the exact
+  // variant, but keying this off product.Id (rather than the URL's model)
+  // means it still only needs the one id the page already has in hand -
+  // harmless to also rerun on a color/size switch since the result is the
+  // same regardless of which variant is currently selected.
   useEffect(() => {
+    if (!product) return
     let cancelled = false
-    fetch(`${BACKEND_URL}/api/products/${id}/similar?lang=${getLang()}`)
+    fetch(`${BACKEND_URL}/api/products/${encodeURIComponent(product.Id)}/similar?lang=${getLang()}`)
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled) setSimilar(data.items)
@@ -112,7 +152,7 @@ function ProductDetail() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [product?.Id])
 
   // The natural dimensions belong to whichever photo is currently shown -
   // stale dimensions from the previous photo would misalign the magnifier
@@ -120,7 +160,11 @@ function ProductDetail() {
   useEffect(() => {
     setNaturalSize(null)
     setLens(null)
-  }, [activeImage, id])
+  }, [activeImage, selectedId])
+
+  if (notFound) {
+    return <NotFound />
+  }
 
   if (!product) {
     return <p>{t('loading')}</p>
@@ -181,7 +225,7 @@ function ProductDetail() {
   function selectColor(color) {
     const sameColor = product.variants.filter((v) => v.color === color)
     const match = sameColor.find((v) => v.size === selectedSize) || sameColor[0]
-    navigate(`/product/${match.id}`)
+    setSelectedId(match.id)
   }
 
   function handleAddToCart() {
@@ -242,8 +286,8 @@ function ProductDetail() {
     const match =
       product.variants.find((v) => v.size === size && v.color === currentColor) ||
       product.variants.find((v) => v.size === size)
-    if (match && match.id !== id) {
-      navigate(`/product/${match.id}`)
+    if (match && match.id !== selectedId) {
+      setSelectedId(match.id)
     }
   }
 

@@ -4,7 +4,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getRandomRows, getSuggestions, getSimilarProducts, getSiblings, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
+import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getRandomRows, getSuggestions, getSimilarProducts, getSiblings, resolveModelToId, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
 import { generateOrderNumber, sendOrderEmails, sendContactEmail, SELLER } from './email.js';
@@ -457,6 +457,18 @@ function extractVideo(specifications) {
     videoAspectPercent: paddingMatch ? parseFloat(paddingMatch[1]) : null,
   };
 }
+
+// Resolves a Model name (the product page's own URL segment, e.g.
+// "/product/BAMBOLINO") to one representative SKU id, purely from the local
+// cache - no Promobox round-trip. The page then fetches that id's real
+// detail from /api/products/:id below, and re-resolves locally (without a
+// new request here) whenever the customer picks a different color/size.
+app.get('/api/products/resolve/:model', (req, res) => {
+  const lang = req.query.lang === 'en' ? 'en' : 'sr';
+  const id = resolveModelToId(req.params.model, lang);
+  if (!id) return res.status(404).json({ error: 'Not found' });
+  res.json({ id });
+});
 
 app.get('/api/products/:id', async (req, res) => {
   const lang = req.query.lang === 'en' ? 'en' : 'sr';

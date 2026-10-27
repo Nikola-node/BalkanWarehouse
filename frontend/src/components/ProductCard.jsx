@@ -16,7 +16,7 @@ function ProductCard({ product, isNew, eager = false }) {
   const loading = eager ? 'eager' : 'lazy'
 
   return (
-    <Link to={`/product/${product.variantIds[0]}`} className="product-card">
+    <Link to={`/product/${encodeURIComponent(product.model)}`} className="product-card">
       <div className="product-card-image">
         {isNew && <span className="product-card-badge">NEW</span>}
         {product.image && <img src={product.image} alt={product.name} loading={loading} />}

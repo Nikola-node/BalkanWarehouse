@@ -319,6 +319,19 @@ export function getSiblings(id, lang = 'sr') {
   return products.filter((p) => (p.Model || p.Name) === key);
 }
 
+// Product detail pages are addressed by Model name (e.g. "/product/BAMBOLINO")
+// rather than by a specific SKU id - unlike a SKU id, a Model name never
+// contains a "/" (some SKU ids do, e.g. a size of "L/XL" or "0/3M", which
+// broke the old id-based route by splitting the URL into extra path
+// segments). This resolves that name to one representative SKU id - the
+// first one for that model - which the page then uses for its real detail
+// fetch (/api/products/:id, unchanged) and re-resolves locally, without
+// touching the URL, whenever the customer picks a different color/size.
+export function resolveModelToId(model, lang = 'sr') {
+  const product = cachedProducts[lang].find((p) => (p.Model || p.Name) === model);
+  return product ? product.Id : null;
+}
+
 // Looks up a color code (e.g. "B - BL") in the Color codebook for its
 // display name and swatch hex value.
 export function getColorInfo(code, lang = 'sr') {
