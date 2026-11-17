@@ -4,6 +4,7 @@ import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
+import morgan from 'morgan';
 import { getGroupedProducts, getCategoryTree, getPackageSizes, getDiverseNewest, getRandomRows, getSuggestions, getSimilarProducts, getSiblings, resolveModelToId, getShadeInfo, getColorInfo, getStockQty, getProducts, stripWholesalePrice, refreshProducts, startProductCache } from './productCache.js';
 import { getProductDetail } from './promobox.js';
 import { getNode } from './categoryTree.js';
@@ -17,6 +18,11 @@ import { buildPaymentFields, verifyResponseHash, capturePayment, voidPayment, re
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Logs one line per request (IP, method, path, status, response size) so a
+// future bandwidth/traffic spike can actually be traced - without this,
+// Render's logs only ever show whatever console.log calls happen to exist.
+app.use(morgan('combined'));
 
 // Locked to the site's own frontend rather than left open to any origin -
 // set FRONTEND_ORIGIN in production to the real deployed domain.
