@@ -205,7 +205,7 @@ function buildOrderHtml({ orderNumber, createdAt, items, customer, paymentMethod
 
   return `
   <div style="font-family: Arial, sans-serif; font-size: 14px; color: #111;">
-    ${paymentStatusBlock(payment, t)}
+    ${customerCopy ? paymentStatusBlock(payment, t) : ''}
     ${infoTable([
       [t.orderNumber, orderNumber],
       [t.orderDate, createdAt.toLocaleString(t.locale)],
